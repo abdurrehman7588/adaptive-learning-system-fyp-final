@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base theme variables can go here, but we will likely use ThemeContext to set them on 'body' or a wrapper */
+  }
+}
