@@ -1,25 +1,43 @@
 {
-  "name": "backend",
+  "name": "adaptive-learning-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "db:schema": "node scripts/runSchema.js",
-    "db:seed": "node scripts/seedQuizzes.js"
+    "dev": "node --watch src/server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "node prisma/seed.js",
+    "db:backfill": "node prisma/scripts/backfill-adaptive-content.mjs",
+    "verify:grade-filtering": "node scripts/verify-grade-filtering.mjs",
+    "verify:content-coverage": "node scripts/verify-content-coverage.mjs",
+    "verify:grade-isolation": "node scripts/verify-grade-isolation.mjs",
+    "verify:adaptive-mvp": "node scripts/verify-adaptive-mvp.mjs",
+    "verify:grade2-tier-pilot": "node scripts/verify-grade2-tier-pilot.mjs",
+    "report:grade2-tier-coverage": "node scripts/report-grade2-tier-coverage.mjs",
+    "verify:kindergarten-tier-pilot": "node scripts/verify-kindergarten-tier-pilot.mjs",
+    "report:kindergarten-tier-coverage": "node scripts/report-kindergarten-tier-coverage.mjs",
+    "verify:student-profile": "node scripts/verify-student-profile.mjs",
+    "verify:analytics-module": "node scripts/verify-analytics-module.mjs",
+    "report:content-coverage": "node scripts/generate-content-coverage-report.mjs",
+    "postinstall": "prisma generate"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "bcryptjs": "^3.0.3",
+    "@prisma/client": "^6.19.0",
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.0",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.3",
-    "nodemon": "^3.1.10",
-    "pg": "^8.16.0"
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "google-auth-library": "^9.15.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "prisma": "^6.19.0"
   }
 }

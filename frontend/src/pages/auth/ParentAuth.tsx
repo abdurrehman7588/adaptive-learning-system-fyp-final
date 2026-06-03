@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/Input';
 
 export const ParentAuth = () => {
     const navigate = useNavigate();
-    const { user, isLoading, login, signupParent, getLastLoginError } = useAuth();
+    const { user, isLoading, login, logout, signupParent, getLastLoginError } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -17,10 +17,6 @@ export const ParentAuth = () => {
         email: '',
         password: '',
     });
-
-    if (!isLoading && user?.role === 'parent') {
-        return <Navigate to="/parent/dashboard" replace />;
-    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -40,6 +36,11 @@ export const ParentAuth = () => {
             return;
         }
 
+        if (formData.password.length < 8) {
+            setError('Password must be at least 8 characters.');
+            return;
+        }
+
         setIsSubmitting(true);
         const success = await signupParent({
             name: formData.name,
@@ -53,7 +54,11 @@ export const ParentAuth = () => {
             return;
         }
 
-        setError(getLastLoginError() ?? 'Could not create account.');
+        const message = getLastLoginError() ?? 'Could not create account.';
+        setError(message);
+        if (message.includes('already exists')) {
+            setIsLogin(true);
+        }
     };
 
     return (
@@ -87,6 +92,24 @@ export const ParentAuth = () => {
                     <motion.div className="absolute top-[-50%] left-[-50%] w-full h-full bg-gradient-to-br from-teal-100/20 to-transparent rounded-full blur-3xl pointer-events-none" />
 
                     <motion.div className="relative z-10">
+                        {!isLoading && user?.role === 'parent' && (
+                            <div className="mb-6 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-900">
+                                <p>
+                                    Signed in as <strong>{user.name}</strong>.{' '}
+                                    <Link to="/parent/dashboard" className="font-semibold underline">
+                                        Open dashboard
+                                    </Link>
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => logout()}
+                                    className="mt-2 font-semibold text-teal-700 underline"
+                                >
+                                    Sign out to use another account
+                                </button>
+                            </div>
+                        )}
+
                         <motion.div className="text-center mb-8">
                             <motion.div
                                 initial={{ scale: 0 }}
@@ -129,12 +152,18 @@ export const ParentAuth = () => {
                             <Input
                                 label="Password"
                                 type="password"
-                                placeholder="••••••"
+                                placeholder="••••••••"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 required
+                                minLength={isLogin ? 1 : 8}
                                 className="bg-white/50 focus:bg-white"
                             />
+                            {!isLogin && (
+                                <p className="text-xs text-slate-500 -mt-2">
+                                    Use at least 8 characters.
+                                </p>
+                            )}
 
                             {error && (
                                 <p className="text-sm text-red-600 font-medium" role="alert">
@@ -149,6 +178,15 @@ export const ParentAuth = () => {
                             >
                                 {isSubmitting ? 'Signing in...' : isLogin ? 'Sign In' : 'Create Account'}
                             </Button>
+
+                            {isLogin && (
+                                <a
+                                    href="/api/auth/google"
+                                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                    Continue with Google
+                                </a>
+                            )}
                         </form>
 
                         <motion.div className="mt-8 text-center">

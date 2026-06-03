@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchQuizById, getQuizzesErrorMessage } from '../../api/quizzes';
 import {
     getAttemptErrorMessage,
+    mapGradedAnswersByQuestionId,
     startQuizAttempt,
     submitQuizAttempt,
     type QuizAttemptAnswer,
@@ -13,10 +14,58 @@ import { storage } from '../../data/storage';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowRight, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import type { Quiz, QuizResult } from '../../types';
 
 type PersistenceMode = 'server' | 'local';
+
+type QuizSession = {
+    mode: PersistenceMode;
+    attemptId: number | null;
+    childId: number | null;
+};
+
+const emptySession: QuizSession = { mode: 'local', attemptId: null, childId: null };
+
+function buildServerAnswers(
+    questions: Quiz['questions'],
+    selectedAnswers: number[],
+    timings: number[],
+): QuizAttemptAnswer[] {
+    if (selectedAnswers.length !== questions.length) {
+        throw new Error(
+            `Please answer all questions (${selectedAnswers.length}/${questions.length} saved).`,
+        );
+    }
+
+    return questions.map((question, idx) => {
+        const selectedIndex = selectedAnswers[idx];
+        if (selectedIndex === undefined || selectedIndex === null) {
+            throw new Error(`Missing answer for question ${idx + 1}.`);
+        }
+
+        const optionIds = question.optionIds ?? [];
+        const selectedOptionId = optionIds[selectedIndex];
+        if (!Number.isFinite(selectedOptionId) || selectedOptionId <= 0) {
+            throw new Error(
+                'Could not match your answer to the server. Sign in at Parent Login, refresh this page, then try again.',
+            );
+        }
+
+        const rawSeconds = timings[idx];
+        const timeTakenSeconds =
+            typeof rawSeconds === 'number' && Number.isFinite(rawSeconds)
+                ? Math.min(600, Math.max(1, Math.round(rawSeconds)))
+                : 1;
+
+        return {
+            question_id: Number(question.id),
+            selected_option_id: Number(selectedOptionId),
+            time_taken_seconds: timeTakenSeconds,
+        };
+    });
+}
 
 export const QuizPlayer = () => {
     const { quizId } = useParams();
@@ -36,17 +85,33 @@ export const QuizPlayer = () => {
     const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
     const [selectedOption, setSelectedOption] = useState<number | null>(null);
     const [answers, setAnswers] = useState<number[]>([]);
+    const [answerTimings, setAnswerTimings] = useState<number[]>([]);
+    const [questionElapsed, setQuestionElapsed] = useState(0);
+
+    const questionStartedAtRef = useRef(Date.now());
     const initInFlightRef = useRef(false);
+    const sessionRef = useRef<QuizSession>(emptySession);
+    const finishInFlightRef = useRef(false);
+
+    const syncSessionRef = useCallback((session: QuizSession) => {
+        sessionRef.current = session;
+    }, []);
+
+    useEffect(() => {
+        syncSessionRef({ mode: persistenceMode, attemptId, childId });
+    }, [persistenceMode, attemptId, childId, syncSessionRef]);
 
     const initializeQuizSession = useCallback(async () => {
         if (initInFlightRef.current) {
             return;
         }
         initInFlightRef.current = true;
+
         if (!quizId) {
             setLoadError('Quiz not found.');
             setQuiz(null);
             setIsLoading(false);
+            initInFlightRef.current = false;
             return;
         }
 
@@ -56,9 +121,11 @@ export const QuizPlayer = () => {
         setAttemptId(null);
         setChildId(null);
         setPersistenceMode('local');
+        syncSessionRef(emptySession);
         setCurrentQuestionIdx(0);
         setSelectedOption(null);
         setAnswers([]);
+        setAnswerTimings([]);
 
         try {
             const token = getToken();
@@ -67,6 +134,7 @@ export const QuizPlayer = () => {
                 const data = await fetchQuizById(quizId);
                 setQuiz(data);
                 setPersistenceMode('local');
+                syncSessionRef(emptySession);
                 return;
             }
 
@@ -86,20 +154,28 @@ export const QuizPlayer = () => {
                 startQuizAttempt(quizId, resolvedChildId),
             ]);
 
+            const serverSession: QuizSession = {
+                mode: 'server',
+                attemptId: attemptSession.attemptId,
+                childId: resolvedChildId,
+            };
+
             setAttemptId(attemptSession.attemptId);
             setQuiz({
                 ...meta,
                 questions: attemptSession.questions,
             });
             setPersistenceMode('server');
+            syncSessionRef(serverSession);
         } catch (error) {
             setLoadError(getQuizzesErrorMessage(error) || getAttemptErrorMessage(error));
             setQuiz(null);
+            syncSessionRef(emptySession);
         } finally {
             initInFlightRef.current = false;
             setIsLoading(false);
         }
-    }, [quizId]);
+    }, [quizId, syncSessionRef]);
 
     useEffect(() => {
         void initializeQuizSession();
@@ -108,89 +184,64 @@ export const QuizPlayer = () => {
         };
     }, [initializeQuizSession]);
 
-    if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center py-24 text-slate-500">
-                <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-                <p className="font-medium">Loading quiz...</p>
-            </div>
-        );
-    }
+    useEffect(() => {
+        questionStartedAtRef.current = Date.now();
+        setSelectedOption(null);
+        setQuestionElapsed(0);
 
-    if (loadError || !quiz) {
-        return (
-            <div className="max-w-lg mx-auto py-16 text-center space-y-4">
-                <p className="text-red-600 font-medium" role="alert">
-                    {loadError ?? 'Quiz not found'}
-                </p>
-                <Link to="/student/quizzes">
-                    <Button variant="outline">Back to Quizzes</Button>
-                </Link>
-            </div>
-        );
-    }
+        const tick = window.setInterval(() => {
+            setQuestionElapsed(
+                Math.max(1, Math.round((Date.now() - questionStartedAtRef.current) / 1000)),
+            );
+        }, 1000);
 
-    const currentQuestion = quiz.questions[currentQuestionIdx];
-    const isLastQuestion = currentQuestionIdx === quiz.questions.length - 1;
+        return () => window.clearInterval(tick);
+    }, [currentQuestionIdx]);
 
-    const buildServerAnswers = (selectedAnswers: number[]): QuizAttemptAnswer[] =>
-        quiz.questions.map((question, idx) => {
-            const selectedIndex = selectedAnswers[idx];
-            const selectedOptionId = question.optionIds?.[selectedIndex];
-            if (selectedOptionId === undefined) {
-                throw new Error('Could not match your answer to the server.');
+    const completeQuiz = useCallback(
+        async (finalAnswers: number[], finalTimings: number[]) => {
+            if (!quiz) {
+                throw new Error('Quiz is not loaded.');
             }
-            return {
-                question_id: Number(question.id),
-                selected_option_id: selectedOptionId,
-            };
-        });
 
-    const handleNext = async () => {
-        if (selectedOption === null || !currentQuestion) return;
+            const session = sessionRef.current;
+            const token = getToken();
 
-        const newAnswers = [...answers, selectedOption];
-        setAnswers(newAnswers);
-
-        if (!isLastQuestion) {
-            setCurrentQuestionIdx((prev) => prev + 1);
-            setSelectedOption(null);
-            return;
-        }
-
-        setIsSubmitting(true);
-        setSubmitError(null);
-
-        try {
-            if (persistenceMode === 'server' && attemptId && childId) {
-                const payload = buildServerAnswers(newAnswers);
-                const attempt = await submitQuizAttempt(attemptId, payload);
+            if (session.mode === 'server' && session.attemptId && session.childId) {
+                const payload = buildServerAnswers(quiz.questions, finalAnswers, finalTimings);
+                const attempt = await submitQuizAttempt(session.attemptId, payload);
 
                 const result: QuizResult = {
                     id: String(attempt.id),
-                    studentId: String(childId),
+                    studentId: String(session.childId),
                     quizType: quiz.type,
                     score: attempt.score,
                     totalQuestions: attempt.total_points,
                     date: new Date().toISOString(),
-                    answers: newAnswers,
+                    answers: finalAnswers,
                 };
 
-                navigate('/student/quiz/result', { state: { result, quiz } });
+                navigate('/student/quiz/result', {
+                    state: {
+                        result,
+                        quiz,
+                        submittedToServer: true,
+                        gradedByQuestionId: mapGradedAnswersByQuestionId(attempt.answers),
+                    },
+                    replace: true,
+                });
                 return;
             }
 
-            if (getToken()) {
-                setSubmitError(
-                    persistenceMode !== 'server' || !attemptId
+            if (token) {
+                throw new Error(
+                    session.mode !== 'server' || !session.attemptId
                         ? 'Could not save to the server. Sign in at Parent Login (parent@demo.com), refresh this quiz page, then finish again.'
                         : 'Could not submit your answers. Refresh and try again.',
                 );
-                setAnswers(newAnswers.slice(0, -1));
-                return;
             }
 
-            const score = newAnswers.reduce((acc, ans, idx) => {
+            const score = finalAnswers.reduce((acc, ans, idx) => {
                 return acc + (ans === quiz.questions[idx].correctIndex ? 1 : 0);
             }, 0);
 
@@ -201,21 +252,94 @@ export const QuizPlayer = () => {
                 score,
                 totalQuestions: quiz.questions.length,
                 date: new Date().toISOString(),
-                answers: newAnswers,
+                answers: finalAnswers,
             };
 
             storage.saveResult(result);
-            navigate('/student/quiz/result', { state: { result, quiz } });
+            navigate('/student/quiz/result', {
+                state: { result, quiz, submittedToServer: false },
+                replace: true,
+            });
+        },
+        [navigate, quiz, user?.id],
+    );
+
+    if (isLoading) {
+        return (
+            <motion.div
+                className="flex flex-col items-center justify-center py-24 text-slate-500"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+            >
+                <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
+                <p className="font-medium">Loading quiz...</p>
+            </motion.div>
+        );
+    }
+
+    if (loadError || !quiz) {
+        return (
+            <motion.div className="max-w-lg mx-auto py-16 text-center space-y-4">
+                <p className="text-red-600 font-medium" role="alert">
+                    {loadError ?? 'Quiz not found'}
+                </p>
+                <Link to="/student/quizzes">
+                    <Button variant="outline">Back to Quizzes</Button>
+                </Link>
+            </motion.div>
+        );
+    }
+
+    const currentQuestion = quiz.questions[currentQuestionIdx];
+    const isLastQuestion = currentQuestionIdx === quiz.questions.length - 1;
+
+    const handleNext = async () => {
+        if (selectedOption === null || !currentQuestion || finishInFlightRef.current) {
+            return;
+        }
+
+        const elapsedSeconds = Math.max(
+            1,
+            Math.round((Date.now() - questionStartedAtRef.current) / 1000),
+        );
+        const newAnswers = [...answers, selectedOption];
+        const newTimings = [...answerTimings, elapsedSeconds];
+
+        if (!isLastQuestion) {
+            setAnswers(newAnswers);
+            setAnswerTimings(newTimings);
+            setCurrentQuestionIdx((prev) => prev + 1);
+            return;
+        }
+
+        finishInFlightRef.current = true;
+        setIsSubmitting(true);
+        setSubmitError(null);
+
+        try {
+            await completeQuiz(newAnswers, newTimings);
         } catch (error) {
             setSubmitError(getAttemptErrorMessage(error));
-            setAnswers(newAnswers.slice(0, -1));
         } finally {
+            finishInFlightRef.current = false;
             setIsSubmitting(false);
         }
     };
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 py-4">
+        <div className="max-w-2xl mx-auto space-y-6 py-4 px-4 md:px-0 relative text-slate-900">
+            {isSubmitting && (
+                <motion.div
+                    className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
+                    <p className="text-lg font-semibold text-slate-800">Submitting your answers...</p>
+                    <p className="text-sm text-slate-500 mt-1">Please wait for your score.</p>
+                </motion.div>
+            )}
+
             {persistenceMode === 'local' && (
                 <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
                     Playing offline — results will save on this device only. For database scoring, sign in at{' '}
@@ -226,42 +350,56 @@ export const QuizPlayer = () => {
                 </p>
             )}
 
-            <div className="flex items-center justify-between text-gray-500 font-medium">
+            {persistenceMode === 'server' && attemptId && (
+                <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
+                    Quiz linked to your parent account — answers will save when you tap Finish Quiz.
+                </p>
+            )}
+
+            <motion.div className="flex items-center justify-between text-slate-600 font-semibold text-sm">
                 <span>
                     Question {currentQuestionIdx + 1}/{quiz.questions.length}
                 </span>
-                <span>{quiz.title}</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <span className="text-slate-800">{quiz.title}</span>
+            </motion.div>
+            <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
                 <div
-                    className="h-full bg-blue-500 transition-all duration-300"
+                    className="h-full bg-blue-600 transition-all duration-300"
                     style={{
-                        width: `${(currentQuestionIdx / quiz.questions.length) * 100}%`,
+                        width: `${((currentQuestionIdx + 1) / quiz.questions.length) * 100}%`,
                     }}
                 />
             </div>
 
-            <Card className="p-6 md:p-8 min-h-[400px] flex flex-col justify-between">
+            <Card className="p-6 md:p-8 min-h-[400px] flex flex-col justify-between bg-white shadow-md border-slate-200">
                 <div>
-                    <h2 className="text-2xl font-bold mb-8 leading-relaxed">{currentQuestion.text}</h2>
+                    <motion.div className="flex items-center justify-between gap-3 mb-6">
+                        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-full">
+                            <Clock className="w-4 h-4" />
+                            {questionElapsed}s on this question
+                        </span>
+                    </motion.div>
+                    <h2 className="text-2xl md:text-3xl font-bold mb-8 leading-relaxed text-slate-900">
+                        {currentQuestion.text}
+                    </h2>
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {currentQuestion.options.map((option, idx) => (
                             <button
                                 key={idx}
                                 type="button"
                                 onClick={() => setSelectedOption(idx)}
                                 disabled={isSubmitting}
-                                className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center justify-between group
+                                className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center justify-between
                              ${
                                  selectedOption === idx
-                                     ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                     : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                                     ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-sm'
+                                     : 'border-slate-300 bg-white text-slate-800 hover:border-blue-400 hover:bg-blue-50/50'
                              }`}
                             >
-                                <span className="font-medium text-lg">{option}</span>
+                                <span className="font-semibold text-lg">{option}</span>
                                 {selectedOption === idx && (
-                                    <CheckCircle className="w-6 h-6 text-blue-500" />
+                                    <CheckCircle className="w-6 h-6 text-blue-600 shrink-0" />
                                 )}
                             </button>
                         ))}
@@ -276,13 +414,14 @@ export const QuizPlayer = () => {
 
                 <div className="mt-8 flex justify-end">
                     <Button
+                        type="button"
                         onClick={() => void handleNext()}
                         disabled={selectedOption === null || isSubmitting}
                         size="lg"
-                        className="w-full md:w-auto"
+                        className="w-full md:w-auto !bg-blue-600 hover:!bg-blue-700 !text-white disabled:!bg-slate-300 disabled:!text-slate-600 disabled:opacity-100"
                     >
                         {isSubmitting
-                            ? 'Saving...'
+                            ? 'Submitting...'
                             : isLastQuestion
                               ? 'Finish Quiz'
                               : 'Next Question'}
@@ -295,3 +434,4 @@ export const QuizPlayer = () => {
         </div>
     );
 };
+

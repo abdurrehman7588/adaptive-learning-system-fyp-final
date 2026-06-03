@@ -2,11 +2,16 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import type { User, Parent, Student } from '../types';
 import { storage } from '../data/storage';
 import { useTheme } from './ThemeContext';
-import { loginWithApi, registerWithApi, getLoginErrorMessage } from '../api/auth';
-import { clearActiveChildId, primeActiveChildFromApi } from '../lib/activeChild';
+import {
+    loginWithApi,
+    loginStudentWithApi,
+    registerWithApi,
+    getLoginErrorMessage,
+    fetchCurrentUser,
+} from '../api/auth';
+import { clearActiveChildId } from '../lib/activeChild';
 import {
     clearAuthStorage,
-    getStoredAuthUser,
     getToken,
     setStoredAuthUser,
     setToken,
@@ -16,10 +21,10 @@ interface AuthContextType {
     user: User | null;
     isLoading: boolean;
     login: (email: string, password: string, role: 'parent' | 'student') => Promise<boolean>;
-    loginStudentByName: (name: string) => boolean;
+    loginStudent: (username: string, pin: string) => Promise<boolean>;
     logout: () => void;
     signupParent: (data: Omit<Parent, 'id' | 'role' | 'childIds'> & { password: string }) => Promise<boolean>;
-    signupStudent: (data: Omit<Student, 'id' | 'role'>) => void;
+    patchUser: (partial: Partial<User>) => void;
     getLastLoginError: () => string | null;
 }
 
@@ -47,49 +52,103 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { setAgeGroup } = useTheme();
 
     useEffect(() => {
-        const token = getToken();
-        const storedUser = getStoredAuthUser<User>();
+        const onSessionExpired = () => {
+            setUser(null);
+            clearActiveChildId();
+            storage.setCurrentUser(null);
+        };
 
-        if (token && storedUser) {
-            setUser(storedUser);
-            applyUserTheme(storedUser, setAgeGroup);
-            storage.setCurrentUser({ id: storedUser.id, role: storedUser.role });
-            setIsLoading(false);
-            return;
-        }
+        window.addEventListener('auth:session-expired', onSessionExpired);
+        return () => window.removeEventListener('auth:session-expired', onSessionExpired);
+    }, []);
 
-        const legacySession = storage.getCurrentUser();
-        if (legacySession) {
-            if (legacySession.role === 'parent') {
-                const parents = storage.getParents();
-                const p = parents.find((x) => x.id === legacySession.id);
-                if (p) {
-                    setUser(p);
-                    setAgeGroup('parent');
+    useEffect(() => {
+        let cancelled = false;
+
+        const restoreSession = async () => {
+            const token = getToken();
+
+            if (token) {
+                try {
+                    const apiUser = await fetchCurrentUser();
+                    if (cancelled) return;
+
+                    setUser(apiUser);
+                    persistSession(apiUser);
+                    applyUserTheme(apiUser, setAgeGroup);
+
+                } catch {
+                    if (!cancelled) {
+                        clearAuthStorage();
+                        clearActiveChildId();
+                        storage.setCurrentUser(null);
+                        setUser(null);
+                    }
+                } finally {
+                    if (!cancelled) setIsLoading(false);
                 }
-            } else {
-                const students = storage.getStudents();
-                const s = students.find((x) => x.id === legacySession.id);
-                if (s) {
-                    setUser(s);
-                    if (s.age <= 7) setAgeGroup('4-7');
-                    else setAgeGroup('8-12');
-                }
+                return;
             }
-        }
 
-        setIsLoading(false);
+            // No JWT — do not treat legacy localStorage as an API-authenticated session.
+            const legacySession = storage.getCurrentUser();
+            if (legacySession) {
+                storage.setCurrentUser(null);
+            }
+
+            if (!cancelled) setIsLoading(false);
+        };
+
+        void restoreSession();
+
+        return () => {
+            cancelled = true;
+        };
     }, [setAgeGroup]);
 
-    const loginStudentByName = (name: string): boolean => {
-        const students = storage.getStudents();
-        const found = students.find((s) => s.name === name);
-        if (!found) return false;
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const oauthToken = params.get('token');
+        const oauthError = params.get('error');
+        if (oauthError) {
+            setLastLoginError(
+                oauthError === 'google_not_configured'
+                    ? 'Google sign-in is not configured on the server.'
+                    : 'Google sign-in failed. Please try again.',
+            );
+            window.history.replaceState({}, '', window.location.pathname);
+            return;
+        }
+        if (!oauthToken) return;
 
-        setUser(found);
-        persistSession(found);
-        applyUserTheme(found, setAgeGroup);
-        return true;
+        setToken(oauthToken);
+        void fetchCurrentUser()
+            .then((apiUser) => {
+                setUser(apiUser);
+                persistSession(apiUser);
+                applyUserTheme(apiUser, setAgeGroup);
+            })
+            .catch(() => {
+                setLastLoginError('Could not complete Google sign-in.');
+            })
+            .finally(() => {
+                window.history.replaceState({}, '', window.location.pathname);
+            });
+    }, [setAgeGroup]);
+
+    const loginStudent = async (username: string, pin: string): Promise<boolean> => {
+        setLastLoginError(null);
+        try {
+            const { token, user: apiUser } = await loginStudentWithApi({ username, pin });
+            setToken(token);
+            setUser(apiUser);
+            persistSession(apiUser);
+            applyUserTheme(apiUser, setAgeGroup);
+            return true;
+        } catch (error) {
+            setLastLoginError(getLoginErrorMessage(error));
+            return false;
+        }
     };
 
     const login = async (
@@ -104,10 +163,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(apiUser);
             persistSession(apiUser);
             applyUserTheme(apiUser, setAgeGroup);
-
-            if (role === 'parent') {
-                await primeActiveChildFromApi();
-            }
 
             return true;
         } catch (error) {
@@ -147,17 +202,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const signupStudent = (data: Omit<Student, 'id' | 'role'>) => {
-        const newStudent: Student = {
-            ...data,
-            id: `s-${Date.now()}`,
-            role: 'student',
-        };
-        storage.saveStudent(newStudent);
-        setUser(newStudent);
-        persistSession(newStudent);
-        if (newStudent.age <= 7) setAgeGroup('4-7');
-        else setAgeGroup('8-12');
+    const patchUser = (partial: Partial<User>) => {
+        setUser((prev) => {
+            if (!prev) return prev;
+            const next = { ...prev, ...partial } as User;
+            persistSession(next);
+            if (next.role === 'student') {
+                storage.saveStudent(next as Student);
+            }
+            return next;
+        });
     };
 
     return (
@@ -166,10 +220,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 user,
                 isLoading,
                 login,
-                loginStudentByName,
+                loginStudent,
                 logout,
                 signupParent,
-                signupStudent,
+                patchUser,
                 getLastLoginError: () => lastLoginError,
             }}
         >

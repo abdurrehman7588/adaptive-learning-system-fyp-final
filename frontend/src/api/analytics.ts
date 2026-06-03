@@ -27,16 +27,61 @@ export type WeeklyProgressPoint = {
     attempts: number;
 };
 
+export type SubjectDailyTrendPoint = {
+    date: string;
+    subject: string;
+    subjectLabel: string;
+    averagePercent: number;
+};
+
+export type StudyTimeComparison = {
+    recentSeconds: number;
+    priorSeconds: number;
+};
+
+export type LearningSpeedInsights = {
+    timedAnswerCount: number;
+    averageResponseSeconds: number;
+    totalStudyTimeSeconds: number;
+    fastThresholdSeconds: number;
+    slowThresholdSeconds: number;
+    signals: {
+        strong_understanding: number;
+        needs_practice: number;
+        weak_concept: number;
+        quick_miss: number;
+        steady_correct: number;
+        needs_review: number;
+        untracked: number;
+    };
+    weakConceptsFromTiming: Array<{ key: string; label: string; count: number }>;
+    summaryMessage: string;
+};
+
+export type PerformanceTrend = {
+    direction: 'improving' | 'declining' | 'stable';
+    changePercent: number;
+    label: string;
+};
+
 export type ChildAnalytics = {
     summary: {
         totalAttempts: number;
         completedAttempts: number;
+        averageScore?: number;
         averageScorePercent: number;
+        averagePercentage?: number;
         strongestSubject: SubjectStat | null;
         weakestSubject: SubjectStat | null;
+        performanceTrend?: PerformanceTrend;
+        lastActivityAt?: string | null;
+        learningSpeed: LearningSpeedInsights;
     };
+    performanceTrend?: PerformanceTrend;
     subjectBreakdown: SubjectStat[];
     weeklyProgress: WeeklyProgressPoint[];
+    subjectDailyTrends: SubjectDailyTrendPoint[];
+    studyTimeComparison: StudyTimeComparison;
     recentHistory: RecentAttempt[];
 };
 
@@ -54,7 +99,11 @@ export type ParentAnalyticsOverview = {
         childCount: number;
         totalAttempts: number;
         completedAttempts: number;
+        averageScore?: number;
         averageScorePercent: number;
+        averagePercentage?: number;
+        performanceTrend?: PerformanceTrend;
+        lastActivityAt?: string | null;
     };
     children: Array<{
         id: number;
@@ -63,18 +112,86 @@ export type ParentAnalyticsOverview = {
     } & ChildAnalytics>;
 };
 
+export const emptyLearningSpeed = (): LearningSpeedInsights => ({
+    timedAnswerCount: 0,
+    averageResponseSeconds: 0,
+    totalStudyTimeSeconds: 0,
+    fastThresholdSeconds: 25,
+    slowThresholdSeconds: 45,
+    signals: {
+        strong_understanding: 0,
+        needs_practice: 0,
+        weak_concept: 0,
+        quick_miss: 0,
+        steady_correct: 0,
+        needs_review: 0,
+        untracked: 0,
+    },
+    weakConceptsFromTiming: [],
+    summaryMessage:
+        'Complete a timed quiz to see how quickly your child answers each question.',
+});
+
+function normalizeChildRow(
+    child: ParentAnalyticsOverview['children'][number],
+): ParentAnalyticsOverview['children'][number] {
+    const summary = child.summary ?? ({} as ChildAnalytics['summary']);
+    const learningSpeed =
+        summary.learningSpeed ??
+        (child as { learningSpeed?: LearningSpeedInsights }).learningSpeed ??
+        emptyLearningSpeed();
+
+    return {
+        ...child,
+        summary: {
+            ...summary,
+            learningSpeed,
+        },
+        subjectDailyTrends: child.subjectDailyTrends ?? [],
+        studyTimeComparison: child.studyTimeComparison ?? {
+            recentSeconds: 0,
+            priorSeconds: 0,
+        },
+    };
+}
+
 export async function fetchParentAnalyticsOverview(): Promise<ParentAnalyticsOverview> {
     const { data } = await apiClient.get<{ overview: ParentAnalyticsOverview }>(
         '/children/analytics/overview',
+        { params: { _: Date.now() } },
     );
-    return data.overview;
+    const overview = data.overview;
+    return {
+        ...overview,
+        children: (overview.children ?? []).map(normalizeChildRow),
+    };
 }
 
 export async function fetchChildAnalytics(childId: number): Promise<ChildAnalyticsBundle> {
     const { data } = await apiClient.get<ChildAnalyticsBundle>(
         `/children/${childId}/analytics`,
+        { params: { _: Date.now() } },
     );
-    return data;
+
+    const analytics = data.analytics;
+    const learningSpeed =
+        analytics.summary?.learningSpeed ?? emptyLearningSpeed();
+
+    return {
+        child: data.child,
+        analytics: {
+            ...analytics,
+            summary: {
+                ...analytics.summary,
+                learningSpeed,
+            },
+            subjectDailyTrends: analytics.subjectDailyTrends ?? [],
+            studyTimeComparison: analytics.studyTimeComparison ?? {
+                recentSeconds: 0,
+                priorSeconds: 0,
+            },
+        },
+    };
 }
 
 export function getAnalyticsErrorMessage(error: unknown): string {

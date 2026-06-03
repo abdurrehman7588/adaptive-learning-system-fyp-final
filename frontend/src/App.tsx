@@ -2,7 +2,10 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ParentFlowProvider } from './context/ParentFlowContext';
 import { Layout } from './components/layout/Layout';
+import { ParentFlowGuard } from './components/flow/ParentFlowGuard';
+import { ParentAppReadyGate } from './components/flow/ParentAppReadyGate';
 
 // Pages
 import { LandingPage } from './pages/landing/LandingPage';
@@ -18,12 +21,26 @@ import { ParentDashboard } from './pages/parent/ParentDashboard';
 import { EmotionalInsights } from './pages/parent/EmotionalInsights';
 import { ParentReports } from './pages/parent/ParentReports';
 import { ParentSettings } from './pages/parent/ParentSettings';
+import { ParentManageChildren } from './pages/parent/ParentManageChildren';
+import { ParentOnboardingProfile } from './pages/parent/onboarding/ParentOnboardingProfile';
+import { ParentOnboardingChild } from './pages/parent/onboarding/ParentOnboardingChild';
+import { ParentOnboardingComplete } from './pages/parent/onboarding/ParentOnboardingComplete';
 
-// Protected Route Wrapper
-const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: 'parent' | 'student' }) => {
+const ProtectedRoute = ({
+  children,
+  role,
+  allowRoles,
+}: {
+  children: React.ReactNode;
+  role?: 'parent' | 'student';
+  allowRoles?: Array<'parent' | 'student'>;
+}) => {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
   if (!user) return <Navigate to="/" replace />;
+  if (allowRoles && !allowRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
   if (role && user.role !== role) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
@@ -35,9 +52,8 @@ function AppRoutes() {
       <Route path="/parent/login" element={<ParentAuth />} />
       <Route path="/student/login" element={<StudentAuth />} />
 
-      {/* Protected Routes inside Layout */}
+      {/* Student routes */}
       <Route element={<Layout />}>
-        {/* Student Routes */}
         <Route path="/student" element={<Navigate to="/student/dashboard" replace />} />
         <Route
           path="/student/dashboard"
@@ -58,7 +74,7 @@ function AppRoutes() {
         <Route
           path="/student/quiz/:quizId"
           element={
-            <ProtectedRoute role="student">
+            <ProtectedRoute allowRoles={['parent', 'student']}>
               <QuizPlayer />
             </ProtectedRoute>
           }
@@ -66,7 +82,7 @@ function AppRoutes() {
         <Route
           path="/student/quiz/result"
           element={
-            <ProtectedRoute role="student">
+            <ProtectedRoute allowRoles={['parent', 'student']}>
               <QuizResultPage />
             </ProtectedRoute>
           }
@@ -87,41 +103,66 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+      </Route>
 
-        {/* Parent Routes */}
-        <Route path="/parent" element={<Navigate to="/parent/dashboard" replace />} />
-        <Route
-          path="/parent/dashboard"
-          element={
-            <ProtectedRoute role="parent">
-              <ParentDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/parent/reports"
-          element={
-            <ProtectedRoute role="parent">
-              <ParentReports />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/parent/settings"
-          element={
-            <ProtectedRoute role="parent">
-              <ParentSettings />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/parent/insights"
-          element={
-            <ProtectedRoute role="parent">
-              <EmotionalInsights />
-            </ProtectedRoute>
-          }
-        />
+      {/* Parent routes — centralized onboarding + flow guard */}
+      <Route
+        path="/parent"
+        element={
+          <ProtectedRoute role="parent">
+            <ParentFlowProvider>
+              <ParentFlowGuard />
+            </ParentFlowProvider>
+          </ProtectedRoute>
+        }
+      >
+        <Route path="onboarding/profile" element={<ParentOnboardingProfile />} />
+        <Route path="onboarding/child" element={<ParentOnboardingChild />} />
+        <Route path="onboarding/complete" element={<ParentOnboardingComplete />} />
+
+        <Route element={<Layout />}>
+          <Route index element={<Navigate to="/parent/dashboard" replace />} />
+          <Route
+            path="dashboard"
+            element={
+              <ParentAppReadyGate>
+                <ParentDashboard />
+              </ParentAppReadyGate>
+            }
+          />
+          <Route
+            path="reports"
+            element={
+              <ParentAppReadyGate>
+                <ParentReports />
+              </ParentAppReadyGate>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <ParentAppReadyGate>
+                <ParentSettings />
+              </ParentAppReadyGate>
+            }
+          />
+          <Route
+            path="settings/children"
+            element={
+              <ParentAppReadyGate>
+                <ParentManageChildren />
+              </ParentAppReadyGate>
+            }
+          />
+          <Route
+            path="insights"
+            element={
+              <ParentAppReadyGate>
+                <EmotionalInsights />
+              </ParentAppReadyGate>
+            }
+          />
+        </Route>
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

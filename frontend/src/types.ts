@@ -30,12 +30,28 @@ export interface Question {
     correctIndex: number;
 }
 
+export type LearningCategoryId =
+    | 'math'
+    | 'science'
+    | 'pattern_recognition'
+    | 'memory'
+    | 'problem_solving'
+    | 'critical_thinking';
+
+export type QuizDifficultyLevel = 'easy' | 'medium' | 'hard';
+
 export interface Quiz {
     id: string;
     type: QuizType;
     title: string;
     description?: string;
     grade?: string;
+    gradeLabel?: string;
+    category?: LearningCategoryId;
+    categoryLabel?: string;
+    /** From API `difficulty_level` — not parsed from title. */
+    difficultyLevel?: QuizDifficultyLevel;
+    difficultyLabel?: string;
     questions: Question[];
     questionCount?: number;
     durationMinutes?: number;

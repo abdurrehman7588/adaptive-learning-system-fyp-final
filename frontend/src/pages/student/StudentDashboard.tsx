@@ -1,162 +1,416 @@
-import { useAuth } from '../../context/AuthContext';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useActiveLearnerProfile } from '../../hooks/useActiveLearnerProfile';
 import { Card } from '../../components/ui/Card';
-import { Play } from 'lucide-react';
+import { BarChart3, Clock, Play, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { StudentTopQuizPicks } from '../../components/features/student/StudentTopQuizPicks';
+import { StudentRewardsSummary } from '../../components/features/rewards/StudentRewardsSummary';
+import {
+    fetchLearnerRecommendations,
+    getRecommendationsErrorMessage,
+    type AdaptiveInsights,
+    type LearningProfile,
+    type RecommendedQuiz,
+} from '../../api/recommendations';
+import { getCategoryDef, type LearningCategoryId } from '../../lib/learningCategories';
+import {
+    fetchChildAnalytics,
+    formatRelativeTime,
+    getAnalyticsErrorMessage,
+    type ChildAnalytics,
+    type RecentAttempt,
+} from '../../api/analytics';
+import {
+    emptyChildRewards,
+    fetchChildRewards,
+    getRewardsErrorMessage,
+    type ChildRewards,
+} from '../../api/rewards';
+import { useStudentGradeScope } from '../../hooks/useStudentGradeScope';
+import { resolveActiveChildId } from '../../lib/activeChild';
+import { getToken } from '../../lib/tokenStorage';
 
 export const StudentDashboard = () => {
-    const { user } = useAuth();
+    const { learnerFirstName } = useActiveLearnerProfile();
+    const { gradeLabel, scopeRecommendations } = useStudentGradeScope();
+    const [recommendations, setRecommendations] = useState<RecommendedQuiz[]>([]);
+    const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+    const [recommendationsError, setRecommendationsError] = useState<string | null>(null);
+    const [topPick, setTopPick] = useState<RecommendedQuiz | null>(null);
+    const [learningProfile, setLearningProfile] = useState<LearningProfile | null>(null);
+    const [adaptiveInsights, setAdaptiveInsights] = useState<AdaptiveInsights | null>(null);
+    const [rewards, setRewards] = useState<ChildRewards>(emptyChildRewards());
+    const [rewardsError, setRewardsError] = useState<string | null>(null);
+    const [rewardsLoading, setRewardsLoading] = useState(false);
+    const [analytics, setAnalytics] = useState<ChildAnalytics | null>(null);
+    const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
-    // Subject data with specific colors/icons
-    const subjects = [
-        { name: 'Math Magic', icon: '🧮', color: 'bg-orange-100 text-orange-600 border-orange-200' },
-        { name: 'Super Science', icon: '🧪', color: 'bg-green-100 text-green-600 border-green-200' },
-        { name: 'Brainy Logic', icon: '🧩', color: 'bg-purple-100 text-purple-600 border-purple-200' },
-        { name: 'Reading Fun', icon: '📖', color: 'bg-blue-100 text-blue-600 border-blue-200' },
-    ];
-
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1 }
+    const loadDashboardData = useCallback(async () => {
+        if (!getToken()) {
+            setRewards(emptyChildRewards());
+            setAnalytics(null);
+            setRewardsError(null);
+            setAnalyticsError(null);
+            return;
         }
-    };
 
-    const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
-        visible: { y: 0, opacity: 1 }
-    };
+        setRewardsLoading(true);
+        setAnalyticsLoading(true);
+        setRewardsError(null);
+        setAnalyticsError(null);
+
+        try {
+            const childId = await resolveActiveChildId();
+            if (!childId) return;
+
+            const [rewardsBundle, analyticsBundle] = await Promise.all([
+                fetchChildRewards(childId),
+                fetchChildAnalytics(childId),
+            ]);
+            setRewards(rewardsBundle.rewards);
+            setAnalytics(analyticsBundle.analytics);
+        } catch (err) {
+            setRewardsError(getRewardsErrorMessage(err));
+            setAnalyticsError(getAnalyticsErrorMessage(err));
+        } finally {
+            setRewardsLoading(false);
+            setAnalyticsLoading(false);
+        }
+    }, []);
+
+    const loadRecommendations = useCallback(async () => {
+        if (!getToken()) {
+            setRecommendations([]);
+            setTopPick(null);
+            setLearningProfile(null);
+            setAdaptiveInsights(null);
+            setRecommendationsError(null);
+            setRecommendationsLoading(false);
+            return;
+        }
+
+        setRecommendationsLoading(true);
+        setRecommendationsError(null);
+        try {
+            const data = await fetchLearnerRecommendations();
+            const scoped = scopeRecommendations(data.recommendations);
+            setRecommendations(scoped);
+            setLearningProfile(data.learningProfile ?? null);
+            setAdaptiveInsights(data.adaptiveInsights ?? null);
+            const whatsNextId = data.adaptiveInsights?.whatsNext?.quizId;
+            const whatsNextQuiz = whatsNextId
+                ? scoped.find((item) => item.quizId === whatsNextId)
+                : null;
+            setTopPick(
+                whatsNextQuiz ??
+                    scoped.find((item) => item.priority === 'high') ??
+                    scoped[0] ??
+                    null,
+            );
+        } catch (err) {
+            setRecommendationsError(getRecommendationsErrorMessage(err));
+            setRecommendations([]);
+            setTopPick(null);
+            setLearningProfile(null);
+            setAdaptiveInsights(null);
+        } finally {
+            setRecommendationsLoading(false);
+        }
+    }, [scopeRecommendations]);
+
+    useEffect(() => {
+        void loadRecommendations();
+        void loadDashboardData();
+    }, [loadRecommendations, loadDashboardData]);
+
+    const completedQuizzes = analytics?.summary.completedAttempts ?? 0;
+    const averagePercent = Math.round(analytics?.summary.averageScorePercent ?? 0);
+    const strongest = analytics?.summary.strongestSubject;
+    const weakest = analytics?.summary.weakestSubject;
+    const recentHistory = analytics?.recentHistory ?? [];
+
+    const adaptiveEnabled = learningProfile?.adaptiveEnabled ?? false;
+    const focusArea = adaptiveInsights?.focusArea;
+    const strongestArea = adaptiveInsights?.strongestArea;
+    const whatsNext = adaptiveInsights?.whatsNext;
+
+    const focusLabel = adaptiveEnabled
+        ? focusArea
+            ? `${focusArea.label}${focusArea.averagePercent != null ? ` (${Math.round(focusArea.averagePercent)}%)` : ''}`
+            : 'Explore all paths'
+        : weakest && weakest.subject !== strongest?.subject
+          ? weakest.label
+          : 'Balanced';
+
+    const strongestLabel = adaptiveEnabled
+        ? strongestArea
+            ? `${strongestArea.label}${strongestArea.averagePercent != null ? ` (${Math.round(strongestArea.averagePercent)}%)` : ''}`
+            : focusArea
+              ? 'More quizzes to compare'
+              : '—'
+        : strongest
+          ? strongest.label
+          : '—';
+
+    const whatsNextStep = useMemo(() => {
+        if (whatsNext) return whatsNext;
+        if (!topPick) return null;
+        return {
+            quizId: topPick.quizId,
+            title: topPick.title,
+            category: topPick.category ?? topPick.subject,
+            label: topPick.categoryLabel ?? topPick.subjectLabel,
+            reason: topPick.reason,
+            adaptiveAction: topPick.adaptiveAction ?? 'explore',
+            priority: topPick.priority,
+            recommendedDifficulty: topPick.recommendedDifficulty ?? 'medium',
+        };
+    }, [whatsNext, topPick]);
 
     return (
-        <motion.div
-            className="space-y-8 pb-8 p-6 md:p-8 font-sans"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-        >
-            {/* Header Section */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 w-full">
-                <div className="w-full md:w-auto">
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="inline-block text-4xl mb-2 origin-bottom-left"
-                    >
-                        👋
-                    </motion.div>
-                    <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-600 tracking-tight transform -rotate-1">
-                        Hi, {user?.name.split(' ')[0]}!
-                    </h1>
-                    <p className="text-slate-500 font-bold text-lg mt-1">
-                        Ready for a magical learning adventure? 🚀
-                    </p>
-                </div>
-
-                <div className="flex gap-3">
-                    <div className="bg-white px-4 py-2 rounded-2xl border-2 border-yellow-200 shadow-sm flex items-center gap-2">
-                        <span className="text-2xl">⭐</span>
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase">Stars</p>
-                            <p className="font-black text-yellow-500 text-xl leading-none">124</p>
-                        </div>
-                    </div>
-                    <div className="bg-white px-4 py-2 rounded-2xl border-2 border-purple-200 shadow-sm flex items-center gap-2">
-                        <span className="text-2xl">🏆</span>
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase">Level</p>
-                            <p className="font-black text-purple-500 text-xl leading-none">5</p>
-                        </div>
-                    </div>
-                </div>
+        <div className="space-y-6 pb-8 p-6 md:p-8 font-sans">
+            <header className="flex flex-col gap-2 w-full">
+                <span className="inline-block text-4xl mb-1">👋</span>
+                <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-600 tracking-tight transform -rotate-1">
+                    Hi, {learnerFirstName}!
+                </h1>
+                <p className="text-slate-500 font-bold text-lg">
+                    {gradeLabel ? `${gradeLabel} learning paths` : 'Ready for a magical learning adventure?'} 🚀
+                </p>
             </header>
 
-            {/* Hero Section */}
-            <motion.div variants={itemVariants}>
-                <Card className="bg-gradient-to-br from-yellow-300 via-orange-300 to-pink-300 text-white p-8 rounded-[2.5rem] border-none relative overflow-hidden shadow-xl shadow-orange-200/50">
-                    <motion.div
-                        animate={{ y: [0, -10, 0] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute right-[-20px] top-[-20px] text-[150px] opacity-20 pointer-events-none rotate-12"
-                    >
-                        🦁
-                    </motion.div>
+            {getToken() && (
+                <section>
+                    <div className="flex items-center gap-2 mb-4">
+                        <BarChart3 className="w-6 h-6 text-sky-600" />
+                        <h2 className="text-2xl font-black text-slate-700">Performance summary</h2>
+                    </div>
+                    {analyticsError && (
+                        <p className="text-sm text-orange-600 mb-3">{analyticsError}</p>
+                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <PerformanceChip
+                            label="Quizzes done"
+                            value={analyticsLoading ? '…' : String(completedQuizzes)}
+                        />
+                        <PerformanceChip
+                            label="Average score"
+                            value={analyticsLoading ? '…' : `${averagePercent}%`}
+                        />
+                        <PerformanceChip
+                            label="Strongest area"
+                            value={
+                                recommendationsLoading || analyticsLoading
+                                    ? '…'
+                                    : strongestLabel
+                            }
+                            small
+                        />
+                        <PerformanceChip
+                            label="Focus area"
+                            value={
+                                recommendationsLoading || analyticsLoading
+                                    ? '…'
+                                    : focusLabel
+                            }
+                            small
+                        />
+                    </div>
+                </section>
+            )}
 
-                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-                        <div>
-                            <div className="inline-block bg-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-bold mb-4 border border-white/30">
-                                🎯 Daily Quest
-                            </div>
-                            <h2 className="text-3xl md:text-5xl font-black mb-3 drop-shadow-sm">
-                                Solve 3 Math <br /> Puzzles!
-                            </h2>
-                            <p className="text-white/90 font-medium text-lg mb-8 max-w-md">
-                                You are doing great! Complete today's quest to unlock a special Zoo Badge! 🦁
+            {getToken() && (
+                <section>
+                    <div className="flex items-center gap-2 mb-3">
+                        <Sparkles className="w-6 h-6 text-violet-600" />
+                        <h2 className="text-2xl font-black text-slate-700">What&apos;s next?</h2>
+                    </div>
+                    {recommendationsLoading ? (
+                        <Card className="p-6 rounded-3xl border-2 border-violet-100 bg-violet-50/40">
+                            <p className="text-sm font-medium text-slate-500">Loading your next quiz…</p>
+                        </Card>
+                    ) : recommendationsError ? (
+                        <Card className="p-6 rounded-3xl border-2 border-orange-100 bg-orange-50/40">
+                            <p className="text-sm text-orange-700">{recommendationsError}</p>
+                            <button
+                                type="button"
+                                onClick={() => void loadRecommendations()}
+                                className="mt-2 text-sm font-bold text-orange-600 hover:underline"
+                            >
+                                Try again
+                            </button>
+                        </Card>
+                    ) : whatsNextStep ? (
+                        <Card className="p-5 md:p-6 rounded-3xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm">
+                            <p className="text-sm font-bold text-violet-800 uppercase tracking-wide">
+                                {whatsNextStep.label}
+                                {whatsNextStep.adaptiveAction
+                                    ? ` · ${whatsNextStep.adaptiveAction}`
+                                    : ''}
                             </p>
-                            <Link to="/student/quizzes">
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    className="bg-white text-orange-500 font-black px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center gap-3 text-lg group"
-                                >
-                                    Start Playing <Play className="w-6 h-6 fill-current group-hover:translate-x-1 transition-transform" />
-                                </motion.button>
+                            <p className="font-black text-slate-800 text-xl mt-1">
+                                {whatsNextStep.title}
+                            </p>
+                            <p className="text-sm text-slate-600 mt-2">{whatsNextStep.reason}</p>
+                            <Link
+                                to={`/student/quiz/${whatsNextStep.quizId}`}
+                                className="inline-flex mt-4 items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold px-5 py-3 rounded-xl transition-colors"
+                            >
+                                Start this quiz
+                                <Play className="w-5 h-5 fill-current" />
                             </Link>
-                        </div>
-                        <motion.div
-                            animate={{
-                                y: [0, -20, 0],
-                                rotate: [0, 5, -5, 0]
-                            }}
-                            transition={{ duration: 4, repeat: Infinity }}
-                            className="text-[8rem] md:text-[10rem] filter drop-shadow-2xl"
-                        >
-                            🚀
-                        </motion.div>
+                        </Card>
+                    ) : (
+                        <Card className="p-6 rounded-3xl border-2 border-slate-100 bg-white">
+                            <p className="text-sm text-slate-600">
+                                Browse learning paths to pick your first quiz.
+                            </p>
+                            <Link
+                                to="/student/quizzes"
+                                className="inline-flex mt-3 text-sm font-bold text-violet-700 hover:underline"
+                            >
+                                View all quizzes →
+                            </Link>
+                        </Card>
+                    )}
+                </section>
+            )}
+
+            {getToken() && adaptiveEnabled && learningProfile && !recommendationsLoading && (
+                <section>
+                    <h2 className="text-lg font-black text-slate-700 mb-2">Learning profile</h2>
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                        {learningProfile.categories.map((row) => {
+                            const def = getCategoryDef(row.category as LearningCategoryId);
+                            const pct =
+                                row.averagePercent != null
+                                    ? `${Math.round(row.averagePercent)}%`
+                                    : '—';
+                            return (
+                                <div
+                                    key={row.category}
+                                    className="rounded-xl border border-slate-100 bg-white px-2 py-2 text-center"
+                                >
+                                    <p className="text-[10px] font-bold text-slate-500 truncate">
+                                        {def.shortLabel}
+                                    </p>
+                                    <p className="font-black text-slate-800 text-sm">{pct}</p>
+                                </div>
+                            );
+                        })}
                     </div>
-                </Card>
-            </motion.div>
+                </section>
+            )}
 
-            {/* Subjects Section */}
-            <section>
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-black text-slate-700 flex items-center gap-2">
-                        <span className="text-3xl">📚</span> Your Subjects
-                    </h2>
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {subjects.map((subject) => (
-                        <motion.button
-                            key={subject.name}
-                            variants={itemVariants}
-                            whileHover={{ scale: 1.05, y: -5 }}
-                            whileTap={{ scale: 0.95 }}
-                            className={`p-6 rounded-3xl border-b-4 transition-all flex flex-col items-center gap-3 shadow-sm hover:shadow-md ${subject.color}`}
+            {getToken() && (
+                <section>
+                    <div className="flex items-center justify-between gap-2 mb-4">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="w-6 h-6 text-orange-500" />
+                            <h2 className="text-2xl font-black text-slate-700">Top picks</h2>
+                        </div>
+                        <Link
+                            to="/student/quizzes"
+                            className="text-sm font-bold text-orange-600 hover:underline shrink-0"
                         >
-                            <div className="w-16 h-16 rounded-2xl bg-white/50 flex items-center justify-center text-4xl shadow-inner">
-                                {subject.icon}
-                            </div>
-                            <span className="font-bold text-lg">{subject.name}</span>
-                        </motion.button>
-                    ))}
-                </div>
-            </section>
-
-            {/* Recent Achievement */}
-            <motion.section variants={itemVariants}>
-                <Card className="p-6 rounded-3xl border-2 border-slate-100 bg-white/50 backdrop-blur-sm">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center text-3xl animate-pulse">
-                            👑
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-lg text-slate-700">New High Score!</h3>
-                            <p className="text-slate-500">You scored <span className="font-bold text-yellow-500">100%</span> in Math yesterday. Keep it up!</p>
-                        </div>
+                            All paths →
+                        </Link>
                     </div>
-                </Card>
-            </motion.section>
-        </motion.div>
+                    <Card className="p-5 md:p-6 rounded-3xl border-2 border-orange-100 bg-white/80">
+                        <StudentTopQuizPicks
+                            recommendations={recommendations}
+                            isLoading={recommendationsLoading}
+                            error={recommendationsError}
+                            onRetry={() => void loadRecommendations()}
+                            maxItems={3}
+                        />
+                    </Card>
+                </section>
+            )}
+
+            {getToken() && (
+                <section>
+                    <div className="flex items-center gap-2 mb-4">
+                        <Clock className="w-6 h-6 text-slate-600" />
+                        <h2 className="text-2xl font-black text-slate-700">Recent activity</h2>
+                    </div>
+                    <Card className="p-5 md:p-6 rounded-3xl border-2 border-slate-100 bg-white">
+                        {analyticsLoading ? (
+                            <p className="text-slate-500 text-sm font-medium py-4 text-center">
+                                Loading activity...
+                            </p>
+                        ) : recentHistory.length === 0 ? (
+                            <p className="text-slate-500 text-sm font-medium py-4 text-center">
+                                Complete a quiz to see your recent activity here.
+                            </p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {recentHistory.slice(0, 5).map((attempt) => (
+                                    <RecentActivityRow key={attempt.attemptId} attempt={attempt} />
+                                ))}
+                            </ul>
+                        )}
+                    </Card>
+                </section>
+            )}
+
+            {getToken() && (
+                <section>
+                    <StudentRewardsSummary
+                        rewards={rewards}
+                        loading={rewardsLoading}
+                        error={rewardsError}
+                    />
+                </section>
+            )}
+        </div>
     );
 };
+
+function PerformanceChip({
+    label,
+    value,
+    small,
+}: {
+    label: string;
+    value: string;
+    small?: boolean;
+}) {
+    return (
+        <div className="rounded-2xl bg-white border-2 border-sky-100 px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wide">{label}</p>
+            <p
+                className={`font-black text-slate-800 mt-1 leading-tight ${
+                    small ? 'text-sm md:text-base' : 'text-xl'
+                }`}
+            >
+                {value}
+            </p>
+        </div>
+    );
+}
+
+function RecentActivityRow({ attempt }: { attempt: RecentAttempt }) {
+    return (
+        <li className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+            <div className="min-w-0">
+                <p className="font-bold text-slate-800 truncate">{attempt.quizTitle}</p>
+                <p className="text-xs text-slate-500">
+                    {attempt.subjectLabel} · {formatRelativeTime(attempt.completedAt)}
+                </p>
+            </div>
+            <span
+                className={`shrink-0 font-black text-sm px-2.5 py-1 rounded-lg ${
+                    attempt.percentage >= 80
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : attempt.percentage >= 60
+                          ? 'bg-sky-100 text-sky-700'
+                          : 'bg-amber-100 text-amber-700'
+                }`}
+            >
+                {Math.round(attempt.percentage)}%
+            </span>
+        </li>
+    );
+}

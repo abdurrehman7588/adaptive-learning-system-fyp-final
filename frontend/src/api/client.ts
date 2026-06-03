@@ -1,5 +1,6 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
-import { getToken } from '../lib/tokenStorage';
+import { messageFromAxiosError } from './errors';
+import { clearAuthStorage, getToken } from '../lib/tokenStorage';
 
 /** In dev, use Vite proxy (/api → localhost:5000) to avoid cross-origin preflight issues. */
 const API_BASE_URL =
@@ -48,3 +49,32 @@ apiClient.interceptors.request.use((config) => {
 
     return config;
 });
+
+/** Unwrap backend envelope `{ success, message, data }` for existing API helpers. */
+apiClient.interceptors.response.use(
+    (response) => {
+        const body = response.data;
+        if (
+            body &&
+            typeof body === 'object' &&
+            body.success === true &&
+            body.data !== undefined
+        ) {
+            response.data = body.data;
+        }
+        return response;
+    },
+    (error) => {
+        if (error.response?.status === 401 && getToken()) {
+            clearAuthStorage();
+            window.dispatchEvent(new Event('auth:session-expired'));
+        }
+
+        const apiError = messageFromAxiosError(error);
+        if (apiError) {
+            return Promise.reject(apiError);
+        }
+
+        return Promise.reject(error);
+    },
+);

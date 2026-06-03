@@ -1,5 +1,7 @@
 import { isAxiosError } from 'axios';
-import type { Question, Quiz, QuizType } from '../types';
+import { attachCategoryToQuiz } from '../lib/catalogGrouping';
+import { normalizeLearningCategory } from '../lib/learningCategories';
+import type { Question, Quiz, QuizDifficultyLevel, QuizType } from '../types';
 import { apiClient } from './client';
 
 type BackendOption = {
@@ -25,7 +27,12 @@ type BackendQuiz = {
     name?: string;
     description?: string;
     subject?: string;
+    category?: string;
+    category_label?: string;
+    difficulty_level?: string;
+    difficulty_label?: string;
     grade_level?: string;
+    grade_level_label?: string;
     time_limit_minutes?: number;
     durationMinutes?: number;
     type?: string;
@@ -109,22 +116,54 @@ function mapBackendQuestion(raw: BackendQuestion, index: number, includeCorrect:
     };
 }
 
+function normalizeDifficultyLevel(
+    raw?: string | null,
+): QuizDifficultyLevel | undefined {
+    const level = raw?.toLowerCase();
+    if (level === 'easy' || level === 'medium' || level === 'hard') {
+        return level;
+    }
+    return undefined;
+}
+
 function mapBackendQuiz(raw: BackendQuiz, questions: Question[] = []): Quiz {
     const id = raw.id !== undefined ? String(raw.id) : '';
     if (!id) {
         throw new Error('Quiz response did not include an id.');
     }
 
-    return {
+    const base: Quiz = {
         id,
-        type: subjectToQuizType(raw.type ?? raw.quizType ?? raw.subject),
+        type: subjectToQuizType(
+            raw.category ?? raw.type ?? raw.quizType ?? raw.subject,
+        ),
         title: raw.title ?? raw.name ?? 'Untitled Quiz',
         description: raw.description,
         grade: raw.grade_level,
+        gradeLabel: raw.grade_level_label,
+        difficultyLevel: normalizeDifficultyLevel(raw.difficulty_level),
+        difficultyLabel: raw.difficulty_label,
         questions,
         questionCount: raw.questionCount ?? questions.length,
         durationMinutes: raw.time_limit_minutes ?? raw.durationMinutes,
     };
+
+    return attachCategoryToQuiz(
+        base,
+        raw.category ?? normalizeCategoryFromSubject(raw.subject),
+    );
+}
+
+function normalizeCategoryFromSubject(subject?: string | null): string | null {
+    if (!subject) return null;
+    const lower = subject.toLowerCase();
+    if (lower.includes('pattern')) return 'pattern_recognition';
+    if (lower.includes('memory')) return 'memory';
+    if (lower.includes('science') || lower.includes('world')) return 'science';
+    if (lower.includes('logic') || lower.includes('reason')) return 'critical_thinking';
+    if (lower.includes('problem')) return 'problem_solving';
+    if (lower.includes('math') || lower.includes('cognitive')) return 'math';
+    return normalizeLearningCategory(subject);
 }
 
 function extractQuizzesPayload(data: unknown): BackendQuiz[] {

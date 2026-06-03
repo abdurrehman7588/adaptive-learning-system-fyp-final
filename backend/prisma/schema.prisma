@@ -1,0 +1,197 @@
+// Auth module — users table (Child/Parent tables added in later migrations)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  parent
+  admin
+}
+
+enum GradeLevel {
+  pre_k
+  kindergarten
+  grade_1
+  grade_2
+  grade_3
+  grade_4
+  grade_5
+  grade_6
+}
+
+enum DifficultyLevel {
+  easy
+  medium
+  hard
+}
+
+enum LearningCategory {
+  math
+  science
+  pattern_recognition
+  memory
+  problem_solving
+  critical_thinking
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  role         UserRole @default(parent)
+  email        String   @unique
+  name         String
+  passwordHash String?  @map("password_hash")
+  googleId     String?  @unique @map("google_id")
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  parentProfile ParentProfile?
+  children      Child[]
+
+  @@map("users")
+}
+
+model ParentProfile {
+  parentId            Int      @id @map("parent_id")
+  preferredLanguage   String?  @map("preferred_language")
+  preferences         Json     @default("{}")
+  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  onboardingSkipped   Boolean  @default(false) @map("onboarding_skipped")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@map("parent_profiles")
+}
+
+model Child {
+  id                  Int         @id @default(autoincrement())
+  parentId            Int         @map("parent_id")
+  name                String
+  username            String      @unique
+  pinHash             String      @map("pin_hash")
+  age                 Int?
+  dateOfBirth         DateTime?   @map("date_of_birth") @db.Date
+  gradeLevel          GradeLevel? @map("grade_level")
+  avatarUrl           String?     @map("avatar_url")
+  learningPreferences Json        @default("{}") @map("learning_preferences")
+  isActive            Boolean     @default(true) @map("is_active")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  quizAttempts QuizAttempt[]
+
+  @@index([parentId])
+  @@index([gradeLevel])
+  @@map("children")
+}
+
+enum QuizAttemptStatus {
+  in_progress
+  completed
+  abandoned
+}
+
+model Quiz {
+  id               Int              @id @default(autoincrement())
+  slug             String           @unique
+  title            String
+  description      String?
+  category         LearningCategory
+  gradeLevel       GradeLevel       @map("grade_level")
+  difficultyLevel  DifficultyLevel  @default(medium) @map("difficulty_level")
+  subject          String?
+  timeLimitMinutes Int?             @map("time_limit_minutes")
+  passPercentage   Int              @default(60) @map("pass_percentage")
+  isPublished      Boolean          @default(true) @map("is_published")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@index([isPublished, gradeLevel, category, difficultyLevel])
+  @@index([category])
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id                   Int               @id @default(autoincrement())
+  quizId               Int               @map("quiz_id")
+  questionText         String            @map("question_text")
+  orderIndex           Int               @default(0) @map("order_index")
+  difficultyLevel      DifficultyLevel?  @map("difficulty_level")
+  topic                String?           @db.VarChar(255)
+  skillArea            LearningCategory? @map("skill_area")
+  estimatedTimeSeconds Int?              @map("estimated_time_seconds")
+
+  quiz    Quiz                 @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options QuizQuestionOption[]
+  answers QuizAttemptAnswer[]
+
+  @@index([quizId])
+  @@index([quizId, difficultyLevel])
+  @@index([skillArea])
+  @@map("quiz_questions")
+}
+
+model QuizQuestionOption {
+  id         Int     @id @default(autoincrement())
+  questionId Int     @map("question_id")
+  optionText String  @map("option_text")
+  orderIndex Int     @default(0) @map("order_index")
+  isCorrect  Boolean @default(false) @map("is_correct")
+
+  question       QuizQuestion        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  attemptAnswers QuizAttemptAnswer[]
+
+  @@index([questionId])
+  @@map("quiz_question_options")
+}
+
+model QuizAttempt {
+  id          Int               @id @default(autoincrement())
+  quizId      Int               @map("quiz_id")
+  childId     Int               @map("child_id")
+  status      QuizAttemptStatus @default(in_progress)
+  score       Int?
+  totalPoints Int?              @map("total_points")
+  percentage  Decimal?          @db.Decimal(5, 2)
+  passed      Boolean?
+  startedAt   DateTime          @default(now()) @map("started_at")
+  completedAt DateTime?         @map("completed_at")
+
+  quiz    Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  child   Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  answers QuizAttemptAnswer[]
+
+  @@index([childId])
+  @@index([quizId, childId])
+  @@map("quiz_attempts")
+}
+
+model QuizAttemptAnswer {
+  id               Int       @id @default(autoincrement())
+  attemptId        Int       @map("attempt_id")
+  questionId       Int       @map("question_id")
+  selectedOptionId Int?      @map("selected_option_id")
+  isCorrect        Boolean   @default(false) @map("is_correct")
+  timeTakenSeconds Int?      @map("time_taken_seconds")
+  answeredAt       DateTime? @map("answered_at")
+
+  attempt        QuizAttempt         @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question       QuizQuestion        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption QuizQuestionOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@index([questionId])
+  @@map("quiz_attempt_answers")
+}

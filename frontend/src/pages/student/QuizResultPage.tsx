@@ -2,16 +2,22 @@ import { useLocation, Link, Navigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { CheckCircle, XCircle, Home, RotateCcw } from 'lucide-react';
+import type { SubmittedAnswerRow } from '../../api/attempts';
 import type { QuizResult, Quiz } from '../../types';
 // import Confetti from 'react-confetti';
 
 export const QuizResultPage = () => {
     const location = useLocation();
-    const state = location.state as { result: QuizResult; quiz: Quiz } | null; // Cast properly
+    const state = location.state as {
+        result: QuizResult;
+        quiz: Quiz;
+        submittedToServer?: boolean;
+        gradedByQuestionId?: Record<string, SubmittedAnswerRow>;
+    } | null;
 
     if (!state) return <Navigate to="/student/quizzes" />;
 
-    const { result, quiz } = state;
+    const { result, quiz, submittedToServer = false, gradedByQuestionId = {} } = state;
     const percentage = Math.round((result.score / result.totalQuestions) * 100);
 
     // Simple feedback logic
@@ -32,6 +38,15 @@ export const QuizResultPage = () => {
             <div className="space-y-2">
                 <h1 className="text-4xl font-bold font-comic text-blue-600">{message}</h1>
                 <p className="text-gray-500 text-lg">You completed {quiz.title}</p>
+                {submittedToServer ? (
+                    <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 inline-block mt-2">
+                        Saved to your parent dashboard
+                    </p>
+                ) : (
+                    <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 inline-block mt-2">
+                        Saved on this device only — parent login required for server scoring
+                    </p>
+                )}
             </div>
 
             <Card className="p-8 inline-block w-full max-w-md bg-gradient-to-br from-white to-blue-50">
@@ -62,8 +77,16 @@ export const QuizResultPage = () => {
             <div className="space-y-4 text-left">
                 <h3 className="text-xl font-bold ml-2">Review Answers</h3>
                 {quiz.questions.map((q, idx) => {
-                    const userAnswer = result.answers[idx];
-                    const isCorrect = userAnswer === q.correctIndex;
+                    const userAnswerIdx = result.answers[idx];
+                    const graded = gradedByQuestionId[q.id];
+                    const isCorrect = graded
+                        ? graded.is_correct
+                        : userAnswerIdx === q.correctIndex;
+                    const selectedOptionId =
+                        graded?.selected_option_id ??
+                        (q.optionIds?.[userAnswerIdx] !== undefined
+                            ? q.optionIds[userAnswerIdx]
+                            : null);
 
                     return (
                         <Card key={q.id} className={`p-4 border-l-4 ${isCorrect ? 'border-green-500' : 'border-red-500'}`}>
@@ -77,9 +100,20 @@ export const QuizResultPage = () => {
                                         {q.options.map((opt, optIdx) => (
                                             <div key={optIdx} className={`
                                                 px-2 py-1 rounded 
-                                                ${optIdx === q.correctIndex ? 'bg-green-100 text-green-700 font-medium' : ''}
-                                                ${!isCorrect && optIdx === userAnswer ? 'bg-red-100 text-red-700 decoration-line-through' : ''}
-                                                ${optIdx !== q.correctIndex && optIdx !== userAnswer ? 'text-gray-400' : ''}
+                                                ${(() => {
+                                                    const optionId = q.optionIds?.[optIdx];
+                                                    const isUserPick =
+                                                        optionId !== undefined &&
+                                                        selectedOptionId !== null &&
+                                                        optionId === selectedOptionId;
+                                                    if (isUserPick && isCorrect) {
+                                                        return 'bg-green-100 text-green-700 font-medium';
+                                                    }
+                                                    if (isUserPick && !isCorrect) {
+                                                        return 'bg-red-100 text-red-700';
+                                                    }
+                                                    return 'text-gray-500';
+                                                })()}
                                             `}>
                                                 {opt}
                                             </div>

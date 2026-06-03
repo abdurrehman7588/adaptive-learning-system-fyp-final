@@ -57,10 +57,11 @@ function normalizeRole(
 }
 
 function mapApiUser(raw: ApiUser, fallbackRole: 'parent' | 'student'): User {
-    const id = raw.id ?? raw._id;
-    if (!id) {
+    const rawId = raw.id ?? raw._id;
+    if (rawId === undefined || rawId === null || rawId === '') {
         throw new Error('Login response did not include a user id.');
     }
+    const id = String(rawId);
 
     const role = normalizeRole(raw.role, fallbackRole) ?? fallbackRole;
     const name = raw.name ?? raw.email ?? 'User';
@@ -144,19 +145,120 @@ export async function loginWithApi(
     return { token, user };
 }
 
+export async function fetchCurrentUser(): Promise<User> {
+    const { data } = await apiClient.get<{ user: ApiUser }>('/auth/me');
+    const rawId = data.user?.id ?? data.user?._id;
+    if (rawId === undefined || rawId === null || rawId === '') {
+        throw new Error('Could not load profile.');
+    }
+
+    const roleHint: 'parent' | 'student' =
+        data.user?.role === 'student' ? 'student' : 'parent';
+    const role = normalizeRole(data.user?.role, roleHint) ?? roleHint;
+    return mapApiUser(data.user, role);
+}
+
+export async function loginStudentWithApi(credentials: {
+    username: string;
+    pin: string;
+}): Promise<LoginResult> {
+    const { data } = await apiClient.post<Record<string, unknown>>(
+        '/auth/student/login',
+        credentials,
+    );
+
+    const token = extractToken(data);
+    if (!token) {
+        throw new Error('Login response did not include a token.');
+    }
+
+    const apiUser = extractApiUser(data);
+    if (!apiUser) {
+        throw new Error('Login response did not include user details.');
+    }
+
+    const user = mapApiUser(apiUser, 'student');
+    if (user.role !== 'student') {
+        throw new Error('This account cannot sign in as a student.');
+    }
+
+    return { token, user };
+}
+
+export async function updateParentProfileName(name: string): Promise<User> {
+    const { data } = await apiClient.put<{ user: ApiUser }>('/auth/profile', { name });
+    if (!data.user) {
+        throw new Error('Profile update did not return user details.');
+    }
+    return mapApiUser(data.user, 'parent');
+}
+
+import { isApiRequestError, messageFromAxiosError } from './errors';
+
+const AUTH_ERROR_HINTS: Record<string, string> = {
+    AUTH_EMAIL_EXISTS:
+        'An account with this email already exists. Switch to Sign in and use the same password you used before.',
+    AUTH_VALIDATION_ERROR: 'Please check the form fields and try again.',
+};
+
+function formatValidationDetails(
+    errors: Array<{ field?: string; message?: string }> | undefined,
+): string | null {
+    if (!errors?.length) {
+        return null;
+    }
+
+    const parts = errors
+        .filter((item) => item.message)
+        .map((item) => (item.field ? `${item.field}: ${item.message}` : item.message));
+
+    return parts.length ? parts.join(' · ') : null;
+}
+
 export function getLoginErrorMessage(error: unknown): string {
-    if (isAxiosError(error)) {
-        const data = error.response?.data;
-        if (data && typeof data === 'object') {
-            const record = data as Record<string, unknown>;
-            if (typeof record.message === 'string') return record.message;
-            if (typeof record.error === 'string') return record.error;
+    if (isApiRequestError(error)) {
+        if (error.code && AUTH_ERROR_HINTS[error.code]) {
+            const details = formatValidationDetails(error.errors);
+            return details ? `${AUTH_ERROR_HINTS[error.code]} (${details})` : AUTH_ERROR_HINTS[error.code];
         }
+
+        const details = formatValidationDetails(error.errors);
+        if (details) {
+            return details;
+        }
+
+        if (error.message === 'User already exists') {
+            return AUTH_ERROR_HINTS.AUTH_EMAIL_EXISTS;
+        }
+
+        return error.message;
+    }
+
+    const fromAxios = messageFromAxiosError(error);
+    if (fromAxios) {
+        return getLoginErrorMessage(fromAxios);
+    }
+
+    if (isAxiosError(error)) {
         if (error.response?.status === 401) {
             return 'Invalid email or password.';
         }
         if (error.message) return error.message;
     }
-    if (error instanceof Error) return error.message;
+
+    if (error instanceof Error) {
+        if (error.message === 'User already exists') {
+            return AUTH_ERROR_HINTS.AUTH_EMAIL_EXISTS;
+        }
+        return error.message;
+    }
+
     return 'Login failed. Please try again.';
+}
+
+export function isEmailAlreadyRegisteredError(error: unknown): boolean {
+    if (isApiRequestError(error)) {
+        return error.code === 'AUTH_EMAIL_EXISTS' || error.status === 409;
+    }
+    return getLoginErrorMessage(error) === AUTH_ERROR_HINTS.AUTH_EMAIL_EXISTS;
 }

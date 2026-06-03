@@ -19,31 +19,46 @@ type StartAttemptResponse = {
     questions: BackendQuestion[];
 };
 
+export type SubmittedAnswerRow = {
+    question_id: number;
+    selected_option_id: number | null;
+    is_correct: boolean;
+};
+
 type SubmitAttemptResponse = {
     attempt: {
         id: number;
         score: number;
         total_points: number;
         percentage?: number | string;
+        answers?: SubmittedAnswerRow[];
     };
 };
 
 export type QuizAttemptAnswer = {
     question_id: number;
     selected_option_id: number;
+    time_taken_seconds?: number;
 };
 
 function mapAttemptQuestions(questions: BackendQuestion[]): Question[] {
-    return questions.map((question) => {
-        const sorted = [...question.options].sort(
+    return questions.map((question, index) => {
+        const sorted = [...(question.options ?? [])].sort(
             (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
         );
+
+        const optionIds = sorted.map((option) => Number(option.id));
+        if (optionIds.length !== sorted.length || optionIds.some((id) => !Number.isFinite(id) || id <= 0)) {
+            throw new Error(
+                `Question ${index + 1} is missing answer options on the server. Re-seed quizzes or contact support.`,
+            );
+        }
 
         return {
             id: String(question.id),
             text: question.question_text,
             options: sorted.map((option) => option.option_text),
-            optionIds: sorted.map((option) => option.id),
+            optionIds,
             correctIndex: 0,
         };
     });
@@ -72,6 +87,17 @@ export async function submitQuizAttempt(
         { answers },
     );
     return data.attempt;
+}
+
+/** Maps server-graded rows to question ids for the result review UI. */
+export function mapGradedAnswersByQuestionId(
+    rows: SubmittedAnswerRow[] | undefined,
+): Record<string, SubmittedAnswerRow> {
+    if (!rows?.length) return {};
+    return rows.reduce<Record<string, SubmittedAnswerRow>>((acc, row) => {
+        acc[String(row.question_id)] = row;
+        return acc;
+    }, {});
 }
 
 export function getAttemptErrorMessage(error: unknown): string {

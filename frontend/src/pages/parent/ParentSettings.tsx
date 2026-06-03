@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/Button';
@@ -10,13 +11,120 @@ import {
     CreditCard,
     Moon,
     Check,
-    Camera
+    Camera,
+    Loader2,
+    Users,
+    ChevronRight,
 } from 'lucide-react';
+import { updateParentProfileName, getLoginErrorMessage } from '../../api/auth';
+import {
+    fetchChildAnalytics,
+    formatRelativeTime,
+    type RecentAttempt,
+} from '../../api/analytics';
+import { resolveActiveChildId } from '../../lib/activeChild';
+import { loadParentPreferences, saveParentPreferences } from '../../lib/parentPreferences';
+import { fetchParentProfile, updateParentPreferences, getParentApiErrorMessage } from '../../api/parent';
+import { getToken } from '../../lib/tokenStorage';
 
 export const ParentSettings = () => {
-    const { user } = useAuth();
+    const { user, patchUser } = useAuth();
     const [activeTab, setActiveTab] = useState('profile');
+    const [profileName, setProfileName] = useState(user?.name ?? '');
     const [emailNotifications, setEmailNotifications] = useState(true);
+    const [recentActivity, setRecentActivity] = useState<RecentAttempt[]>([]);
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [profileMessage, setProfileMessage] = useState<string | null>(null);
+    const [prefsMessage, setPrefsMessage] = useState<string | null>(null);
+
+    useEffect(() => {
+        setProfileName(user?.name ?? '');
+    }, [user?.name]);
+
+    useEffect(() => {
+        if (!user?.id) return;
+
+        const loadPrefs = async () => {
+            if (getToken()) {
+                try {
+                    const profile = await fetchParentProfile();
+                    setEmailNotifications(profile.preferences.emailNotifications);
+                    saveParentPreferences(user.id, {
+                        emailNotifications: profile.preferences.emailNotifications,
+                    });
+                    return;
+                } catch {
+                    // Fall back to local storage when API unavailable
+                }
+            }
+            const prefs = loadParentPreferences(user.id);
+            setEmailNotifications(prefs.emailNotifications);
+        };
+
+        void loadPrefs();
+    }, [user?.id]);
+
+    const loadRecentActivity = useCallback(async () => {
+        if (!getToken()) {
+            setRecentActivity([]);
+            return;
+        }
+        try {
+            const childId = await resolveActiveChildId();
+            if (!childId) {
+                setRecentActivity([]);
+                return;
+            }
+            const bundle = await fetchChildAnalytics(childId);
+            setRecentActivity(bundle.analytics.recentHistory.slice(0, 6));
+        } catch {
+            setRecentActivity([]);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadRecentActivity();
+    }, [loadRecentActivity]);
+
+    const handleSaveProfile = async () => {
+        if (!profileName.trim()) {
+            setProfileMessage('Name is required.');
+            return;
+        }
+        setProfileSaving(true);
+        setProfileMessage(null);
+        try {
+            if (getToken()) {
+                const updated = await updateParentProfileName(profileName.trim());
+                patchUser({ name: updated.name, email: updated.email });
+                setProfileMessage('Profile saved successfully.');
+            } else {
+                patchUser({ name: profileName.trim() });
+                setProfileMessage('Profile updated locally.');
+            }
+        } catch (err) {
+            setProfileMessage(getLoginErrorMessage(err));
+        } finally {
+            setProfileSaving(false);
+        }
+    };
+
+    const handleSavePreferences = async () => {
+        if (!user?.id) return;
+        setPrefsMessage(null);
+        try {
+            if (getToken()) {
+                await updateParentPreferences({ emailNotifications });
+                saveParentPreferences(user.id, { emailNotifications });
+                setPrefsMessage('Notification preferences saved.');
+                return;
+            }
+            saveParentPreferences(user.id, { emailNotifications });
+            setPrefsMessage('Notification preferences saved on this device.');
+        } catch (err) {
+            setPrefsMessage(getParentApiErrorMessage(err));
+        }
+    };
 
     const tabs = [
         { id: 'profile', label: 'Profile', icon: User },
@@ -39,7 +147,6 @@ export const ParentSettings = () => {
             </div>
 
             <div className="flex flex-col md:flex-row gap-8">
-                {/* Sidebar Tabs */}
                 <div className="w-full md:w-64 flex-shrink-0 space-y-2">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
@@ -61,7 +168,6 @@ export const ParentSettings = () => {
                     })}
                 </div>
 
-                {/* Main Content Area */}
                 <div className="flex-1">
                     <motion.div
                         key={activeTab}
@@ -76,14 +182,18 @@ export const ParentSettings = () => {
                                     <div className="flex items-center gap-6 mb-8">
                                         <div className="relative">
                                             <div className="w-24 h-24 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 text-3xl font-bold border-4 border-white shadow-lg">
-                                                {user?.name?.[0] || 'P'}
+                                                {profileName?.[0] || user?.name?.[0] || 'P'}
                                             </div>
-                                            <button className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-md border border-slate-100 hover:bg-slate-50 transition-colors">
+                                            <button
+                                                type="button"
+                                                className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-md border border-slate-100 hover:bg-slate-50 transition-colors"
+                                                aria-label="Profile photo"
+                                            >
                                                 <Camera className="w-4 h-4 text-slate-600" />
                                             </button>
                                         </div>
                                         <div>
-                                            <h3 className="text-xl font-bold text-slate-900">{user?.name}</h3>
+                                            <h3 className="text-xl font-bold text-slate-900">{profileName || user?.name}</h3>
                                             <p className="text-slate-500">{user?.email}</p>
                                         </div>
                                     </div>
@@ -93,7 +203,8 @@ export const ParentSettings = () => {
                                             <label className="text-sm font-medium text-slate-700">Full Name</label>
                                             <input
                                                 type="text"
-                                                defaultValue={user?.name}
+                                                value={profileName}
+                                                onChange={(e) => setProfileName(e.target.value)}
                                                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
                                             />
                                         </div>
@@ -101,14 +212,54 @@ export const ParentSettings = () => {
                                             <label className="text-sm font-medium text-slate-700">Email Address</label>
                                             <input
                                                 type="email"
-                                                defaultValue={user?.email}
-                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all"
+                                                value={user?.email ?? ''}
+                                                readOnly
+                                                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500"
                                             />
                                         </div>
                                     </div>
 
+                                    {profileMessage && (
+                                        <p className="mt-4 text-sm text-teal-700 font-medium">{profileMessage}</p>
+                                    )}
+
                                     <div className="mt-8 flex justify-end">
-                                        <Button className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20">Save Changes</Button>
+                                        <Button
+                                            className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20"
+                                            onClick={() => void handleSaveProfile()}
+                                            disabled={profileSaving}
+                                        >
+                                            {profileSaving ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                'Save Changes'
+                                            )}
+                                        </Button>
+                                    </div>
+                                </Card>
+
+                                <Card className="p-8">
+                                    <div className="flex items-start gap-4">
+                                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-100">
+                                            <Users className="w-6 h-6 text-teal-700" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-lg font-bold text-slate-900">Manage Children</h3>
+                                            <p className="text-sm text-slate-500 mt-1">
+                                                Add, edit, or remove learner profiles. Choose which child is
+                                                active for quizzes and reports.
+                                            </p>
+                                            <Link
+                                                to="/parent/settings/children"
+                                                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 transition-colors"
+                                            >
+                                                Open Manage Children
+                                                <ChevronRight className="w-4 h-4" />
+                                            </Link>
+                                        </div>
                                     </div>
                                 </Card>
                             </div>
@@ -130,6 +281,7 @@ export const ParentSettings = () => {
                                                 </div>
                                             </div>
                                             <button
+                                                type="button"
                                                 onClick={() => setEmailNotifications(!emailNotifications)}
                                                 className={`w-12 h-6 rounded-full transition-colors relative ${emailNotifications ? 'bg-teal-600' : 'bg-slate-300'}`}
                                             >
@@ -138,16 +290,54 @@ export const ParentSettings = () => {
                                         </div>
                                     </div>
 
+                                    {prefsMessage && (
+                                        <p className="mt-4 text-sm text-teal-700">{prefsMessage}</p>
+                                    )}
+                                    <div className="mt-6 flex justify-end">
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleSavePreferences}
+                                        >
+                                            Save Preferences
+                                        </Button>
+                                    </div>
+
+                                    <h3 className="text-lg font-bold text-slate-900 mb-4 mt-10">Recent Activity</h3>
+                                    {recentActivity.length === 0 ? (
+                                        <p className="text-sm text-slate-500">
+                                            No quiz activity yet for the active learner. Complete a quiz to see updates here.
+                                        </p>
+                                    ) : (
+                                        <ul className="space-y-3">
+                                            {recentActivity.map((item) => (
+                                                <li
+                                                    key={item.attemptId}
+                                                    className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-100"
+                                                >
+                                                    <div>
+                                                        <p className="font-medium text-slate-800">{item.quizTitle}</p>
+                                                        <p className="text-xs text-slate-500">
+                                                            {item.subjectLabel} · {item.percentage}% score
+                                                        </p>
+                                                    </div>
+                                                    <span className="text-xs text-slate-400 whitespace-nowrap">
+                                                        {formatRelativeTime(item.completedAt)}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+
                                     <h3 className="text-lg font-bold text-slate-900 mb-6 mt-10">Appearance</h3>
                                     <div className="grid md:grid-cols-2 gap-4">
-                                        <button className="p-4 rounded-xl border-2 border-teal-600 bg-teal-50 flex items-center justify-between">
+                                        <button type="button" className="p-4 rounded-xl border-2 border-teal-600 bg-teal-50 flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <Moon className="w-5 h-5 text-teal-600" />
                                                 <span className="font-medium text-teal-900">Light Mode</span>
                                             </div>
                                             <Check className="w-5 h-5 text-teal-600" />
                                         </button>
-                                        <button className="p-4 rounded-xl border border-slate-200 hover:border-slate-300 flex items-center justify-between">
+                                        <button type="button" className="p-4 rounded-xl border border-slate-200 hover:border-slate-300 flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <Moon className="w-5 h-5 text-slate-400" />
                                                 <span className="font-medium text-slate-600">Dark Mode</span>
@@ -168,7 +358,7 @@ export const ParentSettings = () => {
                                             <div>
                                                 <span className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">Current Plan</span>
                                                 <h3 className="text-3xl font-bold text-slate-900 mt-3">Pro Family</h3>
-                                                <p className="text-slate-500 mt-1">Billed annually • Next billing on Dec 2026</p>
+                                                <p className="text-slate-500 mt-1">FYP demo plan · Billing not connected</p>
                                             </div>
                                             <div className="text-right">
                                                 <span className="text-3xl font-bold text-slate-900">$12<span className="text-lg text-slate-400 font-normal">/mo</span></span>
@@ -187,8 +377,12 @@ export const ParentSettings = () => {
                                         </div>
 
                                         <div className="flex gap-4">
-                                            <Button variant="outline">View Invoices</Button>
-                                            <Button className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20">Manage Subscription</Button>
+                                            <Button variant="outline" disabled title="Demo only">
+                                                View Invoices
+                                            </Button>
+                                            <Button className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20" disabled title="Demo only">
+                                                Manage Subscription
+                                            </Button>
                                         </div>
                                     </div>
                                 </Card>
@@ -199,7 +393,7 @@ export const ParentSettings = () => {
                                 <div className="text-center py-12">
                                     <Shield className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                                     <h3 className="text-lg font-bold text-slate-900">Security Settings</h3>
-                                    <p className="text-slate-500">Password and 2FA settings would go here.</p>
+                                    <p className="text-slate-500">Password changes use the login flow in this FYP build.</p>
                                 </div>
                             </Card>
                         )}
