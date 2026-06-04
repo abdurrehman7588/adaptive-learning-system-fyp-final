@@ -16,6 +16,7 @@ import {
 } from './modules/quiz/index.js';
 import { createAnalyticsModule, createAnalyticsRouter } from './modules/analytics/index.js';
 import { createRewardsModule, createRewardsRouter } from './modules/rewards/index.js';
+import { createEmotionalModule, createEmotionalRouter } from './modules/emotional/index.js';
 import { ParentUserReadAdapter } from './modules/auth/adapters/parentUserRead.adapter.js';
 import { logger } from './shared/utils/logger.js';
 
@@ -53,7 +54,11 @@ export function createApp(options = {}) {
   const parentModule = createParentModule({ childQueryPort, parentUserReadPort });
   const quizModule = createQuizModule({ childQueryPort });
   const analyticsModule = createAnalyticsModule({ childQueryPort });
-  const rewardsModule = createRewardsModule({ childQueryPort });
+  const emotionalModule = createEmotionalModule({ childQueryPort });
+  const rewardsModule = createRewardsModule({
+    childQueryPort,
+    emotionalOrchestrator: emotionalModule.orchestrator,
+  });
 
   app.use('/api/health', createHealthRouter());
   app.use('/api/parent', createParentRouter(parentModule));
@@ -66,6 +71,7 @@ export function createApp(options = {}) {
     }),
   );
   app.use('/api/children', createAnalyticsRouter(analyticsModule));
+  app.use('/api/children', createEmotionalRouter(emotionalModule));
   app.use('/api/children', createRewardsRouter(rewardsModule));
   app.use('/api/children', createChildRouter(childModule));
   app.use('/api/quizzes', createQuizRouter(quizModule));

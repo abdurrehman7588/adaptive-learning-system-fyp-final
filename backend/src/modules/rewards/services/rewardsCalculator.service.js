@@ -109,7 +109,7 @@ export function resolveLevel(totalXP) {
 /**
  * @param {import('@prisma/client').QuizAttempt[]} attempts
  */
-export function computeTotalXp(attempts, activeDayCount, longestStreak) {
+export function computeTotalXp(attempts, activeDayCount, longestStreak, bonusXp = 0) {
   const completed = attempts.filter((row) => row.status === 'completed');
   let totalXP = 0;
 
@@ -131,6 +131,8 @@ export function computeTotalXp(attempts, activeDayCount, longestStreak) {
   if (longestStreak >= 7) {
     totalXP += XP_STREAK_7_BONUS;
   }
+
+  totalXP += bonusXp;
 
   return totalXP;
 }
@@ -189,7 +191,7 @@ function evaluateBadges(metrics) {
 /**
  * @param {import('@prisma/client').QuizAttempt[]} attempts
  */
-export function buildChildRewards(attempts) {
+export function buildChildRewards(attempts, bonusXp = 0) {
   const completed = attempts.filter((row) => row.status === 'completed');
   const analytics = buildChildAnalytics(attempts);
 
@@ -202,7 +204,7 @@ export function buildChildRewards(attempts) {
   ].sort();
 
   const { currentStreak, longestStreak } = computeStreaks(activeDays);
-  const totalXP = computeTotalXp(attempts, activeDays.length, longestStreak);
+  const totalXP = computeTotalXp(attempts, activeDays.length, longestStreak, bonusXp);
   const levelInfo = resolveLevel(totalXP);
 
   const metrics = {

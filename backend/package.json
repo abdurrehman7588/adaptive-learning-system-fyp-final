@@ -22,6 +22,7 @@
     "report:kindergarten-tier-coverage": "node scripts/report-kindergarten-tier-coverage.mjs",
     "verify:student-profile": "node scripts/verify-student-profile.mjs",
     "verify:analytics-module": "node scripts/verify-analytics-module.mjs",
+    "verify:emotional-module": "node scripts/verify-emotional-module.mjs",
     "report:content-coverage": "node scripts/generate-content-coverage-report.mjs",
     "postinstall": "prisma generate"
   },

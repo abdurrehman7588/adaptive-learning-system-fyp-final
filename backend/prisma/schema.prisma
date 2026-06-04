@@ -85,12 +85,74 @@ model Child {
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")
 
-  user         User          @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  quizAttempts QuizAttempt[]
+  user                    User                         @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  quizAttempts            QuizAttempt[]
+  emotionalAssessments    EmotionalAssessment[]
+  emotionalActivityCompletions EmotionalActivityCompletion[]
 
   @@index([parentId])
   @@index([gradeLevel])
   @@map("children")
+}
+
+enum EmotionalDimension {
+  self_awareness
+  empathy
+  self_regulation
+}
+
+enum EmotionalScoreStatus {
+  developing
+  good
+  strong
+}
+
+model EmotionalAssessment {
+  id                      Int      @id @default(autoincrement())
+  childId                 Int      @map("child_id")
+  completedAt             DateTime @default(now()) @map("completed_at")
+  selfAwarenessPercent    Decimal  @map("self_awareness_percent") @db.Decimal(5, 2)
+  empathyPercent          Decimal  @map("empathy_percent") @db.Decimal(5, 2)
+  selfRegulationPercent   Decimal  @map("self_regulation_percent") @db.Decimal(5, 2)
+  overallPercent          Decimal  @map("overall_percent") @db.Decimal(5, 2)
+  selfAwarenessStatus     EmotionalScoreStatus @map("self_awareness_status")
+  empathyStatus           EmotionalScoreStatus @map("empathy_status")
+  selfRegulationStatus     EmotionalScoreStatus @map("self_regulation_status")
+
+  child     Child                        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  responses EmotionalAssessmentResponse[]
+
+  @@index([childId, completedAt])
+  @@map("emotional_assessments")
+}
+
+model EmotionalAssessmentResponse {
+  id            Int                @id @default(autoincrement())
+  assessmentId  Int                @map("assessment_id")
+  dimension     EmotionalDimension
+  questionIndex Int                @map("question_index")
+  value         Int
+
+  assessment EmotionalAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, dimension, questionIndex])
+  @@index([assessmentId])
+  @@map("emotional_assessment_responses")
+}
+
+model EmotionalActivityCompletion {
+  id           Int                @id @default(autoincrement())
+  childId      Int                @map("child_id")
+  activitySlug String             @map("activity_slug")
+  dimension    EmotionalDimension
+  xpAwarded    Int                @default(0) @map("xp_awarded")
+  payload      Json               @default("{}")
+  completedAt  DateTime           @default(now()) @map("completed_at")
+
+  child Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@index([childId, completedAt])
+  @@map("emotional_activity_completions")
 }
 
 enum QuizAttemptStatus {

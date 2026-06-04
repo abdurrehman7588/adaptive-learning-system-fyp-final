@@ -7,11 +7,13 @@ export class RewardsOrchestratorService {
    * @param {{
    *   rewardsAttemptRepository: import('../repositories/rewardsAttempt.repository.js').RewardsAttemptRepository,
    *   childQueryPort: import('../../../shared/ports/childQuery.port.js').ChildQueryPort,
+   *   emotionalOrchestrator?: import('../../emotional/services/emotionalOrchestrator.service.js').EmotionalOrchestratorService | null,
    * }} deps
    */
   constructor(deps) {
     this.repository = deps.rewardsAttemptRepository;
     this.childQueryPort = deps.childQueryPort;
+    this.emotionalOrchestrator = deps.emotionalOrchestrator ?? null;
   }
 
   async assertParentOwnsChild(parentId, childId) {
@@ -55,12 +57,19 @@ export class RewardsOrchestratorService {
       attemptsByChild.set(attempt.childId, list);
     }
 
-    const childrenRewards = children.map((child) => ({
-      id: child.id,
-      name: child.name,
-      gradeLevel: child.gradeLevel ?? null,
-      rewards: buildChildRewards(attemptsByChild.get(child.id) ?? []),
-    }));
+    const childrenRewards = await Promise.all(
+      children.map(async (child) => {
+        const bonusXp = this.emotionalOrchestrator
+          ? await this.emotionalOrchestrator.sumBonusXp(child.id)
+          : 0;
+        return {
+          id: child.id,
+          name: child.name,
+          gradeLevel: child.gradeLevel ?? null,
+          rewards: buildChildRewards(attemptsByChild.get(child.id) ?? [], bonusXp),
+        };
+      }),
+    );
 
     return { children: childrenRewards };
   }
@@ -70,10 +79,13 @@ export class RewardsOrchestratorService {
 
     const childSummary = await this.#resolveChildSummary(auth, childId);
     const attempts = await this.repository.findAttemptsForChild(childId);
+    const bonusXp = this.emotionalOrchestrator
+      ? await this.emotionalOrchestrator.sumBonusXp(childId)
+      : 0;
 
     return {
       child: childSummary,
-      rewards: buildChildRewards(attempts),
+      rewards: buildChildRewards(attempts, bonusXp),
     };
   }
 
