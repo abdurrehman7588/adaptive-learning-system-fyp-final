@@ -33,6 +33,7 @@ import {
     Clock,
 } from 'lucide-react';
 import { ParentAchievementSummary } from '../../components/features/rewards/ParentAchievementSummary';
+import { ParentEmotionalProgress } from '../../components/features/emotional/ParentEmotionalProgress';
 import {
     fetchParentRewardsOverview,
     getRewardsErrorMessage,
@@ -418,6 +419,11 @@ export const ParentDashboard = () => {
                         childName={selectedChild.name}
                         loading={rewardsLoading}
                         error={rewardsError}
+                    />
+
+                    <ParentEmotionalProgress
+                        childId={selectedChildId}
+                        childName={selectedChild.name}
                     />
                 </>
             )}

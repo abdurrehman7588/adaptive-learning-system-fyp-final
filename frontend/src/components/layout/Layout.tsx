@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { cn } from '../../lib/utils';
-import { Menu, Home, BookOpen, User, Settings, Award, BarChart2 } from 'lucide-react';
+import { Menu, Home, BookOpen, User, Settings, Award, BarChart2, Heart } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { AnimatePresence } from 'framer-motion';
 import { Sidebar } from './Sidebar';
@@ -18,6 +18,7 @@ export const Layout = () => {
     const studentNav = [
         { label: 'Home', icon: Home, path: '/student/dashboard' },
         { label: 'Quizzes', icon: BookOpen, path: '/student/quizzes' },
+        { label: 'Emotional Intelligence', icon: Heart, path: '/student/emotional' },
         { label: 'Rewards', icon: Award, path: '/student/rewards' },
         { label: 'Profile', icon: User, path: '/student/profile' },
     ];

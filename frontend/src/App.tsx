@@ -17,6 +17,10 @@ import { QuizPlayer } from './pages/student/QuizPlayer';
 import { QuizResultPage } from './pages/student/QuizResultPage';
 import { StudentRewards } from './pages/student/StudentRewards';
 import { StudentProfile } from './pages/student/StudentProfile';
+import { EmotionalProfilePage } from './pages/student/EmotionalProfile';
+import { EmotionalAssessmentPage } from './pages/student/EmotionalAssessment';
+import { EmotionalActivityPage } from './pages/student/EmotionalActivity';
+import { EmotionalCategoryDetailPage } from './pages/student/EmotionalCategoryDetail';
 import { ParentDashboard } from './pages/parent/ParentDashboard';
 import { EmotionalInsights } from './pages/parent/EmotionalInsights';
 import { ParentReports } from './pages/parent/ParentReports';
@@ -100,6 +104,38 @@ function AppRoutes() {
           element={
             <ProtectedRoute role="student">
               <StudentProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/emotional"
+          element={
+            <ProtectedRoute role="student">
+              <EmotionalProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/emotional/assessment"
+          element={
+            <ProtectedRoute role="student">
+              <EmotionalAssessmentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/emotional/activity/:slug"
+          element={
+            <ProtectedRoute role="student">
+              <EmotionalActivityPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/emotional/:categorySlug"
+          element={
+            <ProtectedRoute role="student">
+              <EmotionalCategoryDetailPage />
             </ProtectedRoute>
           }
         />

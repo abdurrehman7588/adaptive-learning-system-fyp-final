@@ -5,6 +5,7 @@ import { BarChart3, Clock, Play, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { StudentTopQuizPicks } from '../../components/features/student/StudentTopQuizPicks';
 import { StudentRewardsSummary } from '../../components/features/rewards/StudentRewardsSummary';
+import { StudentEmotionalSummary } from '../../components/features/emotional/StudentEmotionalSummary';
 import {
     fetchLearnerRecommendations,
     getRecommendationsErrorMessage,
@@ -352,6 +353,12 @@ export const StudentDashboard = () => {
                             </ul>
                         )}
                     </Card>
+                </section>
+            )}
+
+            {getToken() && (
+                <section>
+                    <StudentEmotionalSummary />
                 </section>
             )}
 

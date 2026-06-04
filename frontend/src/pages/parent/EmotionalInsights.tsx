@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Card } from '../../components/ui/Card';
-import { Loader2 } from 'lucide-react';
-import { fetchChildAnalytics, getAnalyticsErrorMessage } from '../../api/analytics';
+import { Heart, Loader2 } from 'lucide-react';
+import {
+    fetchChildEmotionalProfile,
+    getEmotionalErrorMessage,
+    statusLabel,
+    type EmotionalProfile,
+} from '../../api/emotional';
 import { resolveActiveChildId } from '../../lib/activeChild';
 import { getToken } from '../../lib/tokenStorage';
 
@@ -9,9 +14,7 @@ export const EmotionalInsights = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [childName, setChildName] = useState('your child');
-    const [moodSummary, setMoodSummary] = useState('');
-    const [focusAreas, setFocusAreas] = useState<string[]>([]);
-    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [profile, setProfile] = useState<EmotionalProfile | null>(null);
 
     const loadInsights = useCallback(async () => {
         if (!getToken()) {
@@ -28,51 +31,11 @@ export const EmotionalInsights = () => {
                 setLoading(false);
                 return;
             }
-            const bundle = await fetchChildAnalytics(childId);
-            const { analytics } = bundle;
-            setChildName(bundle.child.name);
-
-            const avg = analytics.summary.averageScorePercent;
-            const speed = analytics.summary.learningSpeed;
-            const recent = analytics.recentHistory[0];
-
-            if (analytics.summary.completedAttempts === 0) {
-                setMoodSummary(
-                    `${bundle.child.name} has not completed a quiz yet. Encourage a short session to establish a baseline.`,
-                );
-                setFocusAreas(['Engagement (not started)', 'Confidence (unknown)']);
-                setSuggestions([
-                    'Start with a short recommended quiz',
-                    'Celebrate the first completed attempt',
-                ]);
-            } else if (avg >= 75 && speed.signals.strong_understanding > speed.signals.weak_concept) {
-                setMoodSummary(
-                    `${bundle.child.name} shows steady confidence this week. Strong understanding signals outpace weak-concept flags.`,
-                );
-                setFocusAreas([
-                    'Self-Motivation (High)',
-                    `Resilience (${recent && recent.percentage < 60 ? 'Medium' : 'High'})`,
-                ]);
-                setSuggestions([
-                    'Keep sessions under 20 minutes for focus',
-                    'Introduce slightly harder recommended quizzes',
-                ]);
-            } else {
-                setMoodSummary(
-                    `${bundle.child.name} may need encouragement after tougher questions. Practice signals suggest revisiting weaker topics.`,
-                );
-                setFocusAreas([
-                    'Persistence (Medium)',
-                    `Concept clarity (${analytics.summary.weakestSubject?.label ?? 'mixed subjects'})`,
-                ]);
-                setSuggestions(
-                    speed.weakConceptsFromTiming.slice(0, 2).map(
-                        (c) => `Review ${c.label} with a short practice quiz`,
-                    ).concat(['Take a break after two incorrect answers in a row']),
-                );
-            }
+            const data = await fetchChildEmotionalProfile(childId);
+            setProfile(data);
+            setChildName('your child');
         } catch (err) {
-            setError(getAnalyticsErrorMessage(err));
+            setError(getEmotionalErrorMessage(err));
         } finally {
             setLoading(false);
         }
@@ -84,9 +47,12 @@ export const EmotionalInsights = () => {
 
     return (
         <div className="space-y-6 p-6 lg:p-10 max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold">Emotional Intelligence Insights</h1>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Heart className="w-7 h-7 text-rose-500" />
+                Emotional Intelligence Insights
+            </h1>
             <p className="text-gray-500">
-                Inferred from quiz pace, accuracy, and recent performance for {childName}
+                Assessment-based EI scores for {childName} (Self Awareness, Empathy, Self Regulation)
             </p>
 
             {loading && (
@@ -97,34 +63,95 @@ export const EmotionalInsights = () => {
             )}
             {error && <p className="text-sm text-orange-600">{error}</p>}
 
-            {!loading && !error && (
+            {!loading && !error && profile && !profile.hasAssessment && (
+                <Card className="p-6 border-l-4 border-rose-400">
+                    <h3 className="font-bold text-lg">No assessment yet</h3>
+                    <p className="text-gray-600 mt-2">
+                        Ask your child to complete the Emotional Intelligence assessment from their
+                        student dashboard. Results will appear here automatically.
+                    </p>
+                </Card>
+            )}
+
+            {!loading && !error && profile?.hasAssessment && profile.categories && (
                 <div className="grid gap-6">
-                    <Card className="p-6 border-l-4 border-yellow-400">
-                        <div className="flex justify-between">
-                            <h3 className="font-bold text-lg">Weekly Learning Mood</h3>
-                            <span className="text-yellow-500 font-bold">📊 Live</span>
+                    <Card className="p-6 border-l-4 border-violet-400">
+                        <div className="flex justify-between items-start gap-4">
+                            <div>
+                                <h3 className="font-bold text-lg">Overall EI Score</h3>
+                                <p className="text-4xl font-black text-slate-800 mt-2">
+                                    {Math.round(profile.overallScore ?? 0)}%
+                                </p>
+                                <p className="text-sm text-slate-500 mt-1">
+                                    {statusLabel(profile.overallStatus)}
+                                </p>
+                            </div>
+                            {profile.lastCompletedAt && (
+                                <span className="text-xs text-slate-400">
+                                    {new Date(profile.lastCompletedAt).toLocaleDateString()}
+                                </span>
+                            )}
                         </div>
-                        <p className="text-gray-600 mt-2">{moodSummary}</p>
                     </Card>
 
+                    <div className="grid md:grid-cols-3 gap-4">
+                        {(['self_awareness', 'empathy', 'self_regulation'] as const).map((key) => {
+                            const cat = profile.categories![key];
+                            return (
+                                <Card key={key} className="p-4">
+                                    <h4 className="font-bold text-slate-700">{cat.label}</h4>
+                                    <p className="text-2xl font-black mt-1">{Math.round(cat.percent)}%</p>
+                                    <p className="text-sm text-slate-500">{statusLabel(cat.status)}</p>
+                                </Card>
+                            );
+                        })}
+                    </div>
+
                     <div className="grid md:grid-cols-2 gap-4">
-                        <Card className="p-4 bg-blue-50">
-                            <h4 className="font-bold text-blue-700 mb-2">Focus Areas</h4>
-                            <ul className="list-disc ml-4 text-sm text-blue-800 space-y-1">
-                                {focusAreas.map((item) => (
-                                    <li key={item}>{item}</li>
-                                ))}
-                            </ul>
+                        <Card className="p-4 bg-emerald-50">
+                            <h4 className="font-bold text-emerald-700 mb-2">Strongest area</h4>
+                            <p className="text-emerald-900 font-medium">
+                                {profile.strongestArea?.label ?? '—'}
+                                {profile.strongestArea
+                                    ? ` (${Math.round(profile.strongestArea.percent)}%)`
+                                    : ''}
+                            </p>
                         </Card>
-                        <Card className="p-4 bg-green-50">
-                            <h4 className="font-bold text-green-700 mb-2">Suggestions</h4>
-                            <ul className="list-disc ml-4 text-sm text-green-800 space-y-1">
-                                {suggestions.map((item) => (
-                                    <li key={item}>{item}</li>
-                                ))}
-                            </ul>
+                        <Card className="p-4 bg-amber-50">
+                            <h4 className="font-bold text-amber-700 mb-2">Needs improvement</h4>
+                            <p className="text-amber-900 font-medium">
+                                {profile.weakestArea?.label ?? '—'}
+                                {profile.weakestArea
+                                    ? ` (${Math.round(profile.weakestArea.percent)}%)`
+                                    : ''}
+                            </p>
                         </Card>
                     </div>
+
+                    <Card className="p-4 bg-teal-50">
+                        <h4 className="font-bold text-teal-700 mb-2">Recommended activity</h4>
+                        <p className="font-bold text-slate-800">{profile.recommendedActivity.title}</p>
+                        <p className="text-sm text-teal-800 mt-1">
+                            {profile.recommendedActivity.reason}
+                        </p>
+                    </Card>
+
+                    {profile.feelingsInsights && (
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <Card className="p-4 bg-violet-50">
+                                <h4 className="font-bold text-violet-700 mb-2">Most common emotion</h4>
+                                <p className="font-bold text-slate-800">
+                                    {profile.feelingsInsights.mostCommonEmotion}
+                                </p>
+                            </Card>
+                            <Card className="p-4 bg-violet-50">
+                                <h4 className="font-bold text-violet-700 mb-2">Most common reason</h4>
+                                <p className="font-bold text-slate-800">
+                                    {profile.feelingsInsights.mostCommonReason ?? '—'}
+                                </p>
+                            </Card>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
