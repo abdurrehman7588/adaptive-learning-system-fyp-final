@@ -14,13 +14,15 @@ export type EIQuestion = {
     text: string;
 };
 
+export type EIQuestionnaireDimension = {
+    dimension: EmotionalDimension;
+    label: string;
+    questions: EIQuestion[];
+};
+
 export type EIQuestionnaire = {
     scale: EIScaleOption[];
-    dimensions: Array<{
-        dimension: EmotionalDimension;
-        label: string;
-        questions: EIQuestion[];
-    }>;
+    dimensions: EIQuestionnaireDimension[];
 };
 
 export type EICategoryScore = {

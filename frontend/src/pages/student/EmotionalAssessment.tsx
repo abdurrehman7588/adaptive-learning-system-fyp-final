@@ -12,7 +12,9 @@ import {
     statusColor,
     statusLabel,
     type AssessmentResponse,
+    type EIQuestion,
     type EIQuestionnaire,
+    type EIQuestionnaireDimension,
     type EmotionalDimension,
 } from '../../api/emotional';
 
@@ -68,12 +70,16 @@ export const EmotionalAssessmentPage = () => {
         void loadQuestionnaire();
     }, [loadQuestionnaire]);
 
-    const dimensionsByKey = useMemo(() => {
-        if (!questionnaire) return new Map();
-        return new Map(questionnaire.dimensions.map((d) => [d.dimension, d]));
+    const dimensionsByKey = useMemo((): Map<EmotionalDimension, EIQuestionnaireDimension> => {
+        if (!questionnaire) {
+            return new Map<EmotionalDimension, EIQuestionnaireDimension>();
+        }
+        return new Map(
+            questionnaire.dimensions.map((d) => [d.dimension, d] as const),
+        );
     }, [questionnaire]);
 
-    const allQuestions = useMemo(() => {
+    const allQuestions = useMemo((): EIQuestion[] => {
         if (!questionnaire) return [];
         return questionnaire.dimensions.flatMap((dim) => dim.questions);
     }, [questionnaire]);
@@ -83,11 +89,18 @@ export const EmotionalAssessmentPage = () => {
         return answers[key] != null;
     }).length;
 
-    const handleSelect = (dimension: string, questionIndex: number, value: number) => {
+    const handleSelect = (
+        dimension: EmotionalDimension,
+        questionIndex: number,
+        value: number,
+    ) => {
         setAnswers((prev) => ({ ...prev, [`${dimension}:${questionIndex}`]: value }));
     };
 
-    const countAnsweredInDimension = (dimension: string, questionCount: number) => {
+    const countAnsweredInDimension = (
+        dimension: EmotionalDimension,
+        questionCount: number,
+    ) => {
         let count = 0;
         for (let i = 0; i < questionCount; i += 1) {
             if (answers[`${dimension}:${i}`] != null) count += 1;
@@ -294,7 +307,7 @@ export const EmotionalAssessmentPage = () => {
                                             Often · Always
                                         </p>
                                         <div className="space-y-4">
-                                            {dim.questions.map((q) => {
+                                            {dim.questions.map((q: EIQuestion) => {
                                                 const key = `${q.dimension}:${q.questionIndex}`;
                                                 return (
                                                     <div
