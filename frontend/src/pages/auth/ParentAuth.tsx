@@ -62,7 +62,7 @@ export const ParentAuth = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-white to-cyan-50 p-4 relative overflow-hidden">
+        <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-teal-50 via-white to-cyan-50 p-3 sm:p-4 relative overflow-x-hidden">
             <motion.div
                 animate={{
                     scale: [1, 1.2, 1],
@@ -70,7 +70,7 @@ export const ParentAuth = () => {
                     y: [0, -50, 0],
                 }}
                 transition={{ duration: 20, repeat: Infinity, repeatType: 'reverse' }}
-                className="absolute top-0 left-0 w-[500px] h-[500px] bg-teal-200/40 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2"
+                className="absolute top-0 left-0 w-[min(100vw,500px)] h-[min(100vw,500px)] bg-teal-200/40 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
             />
             <motion.div
                 animate={{
@@ -79,7 +79,7 @@ export const ParentAuth = () => {
                     y: [0, 50, 0],
                 }}
                 transition={{ duration: 15, repeat: Infinity, repeatType: 'reverse', delay: 2 }}
-                className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-cyan-200/40 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2"
+                className="absolute bottom-0 right-0 w-[min(100vw,500px)] h-[min(100vw,500px)] bg-cyan-200/40 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2 pointer-events-none"
             />
 
             <motion.div
@@ -88,7 +88,7 @@ export const ParentAuth = () => {
                 transition={{ duration: 0.5, ease: 'easeOut' }}
                 className="w-full max-w-md"
             >
-                <motion.div className="bg-white/90 backdrop-blur-xl border border-white/60 ring-1 ring-slate-900/5 p-8 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] relative overflow-hidden">
+                <motion.div className="bg-white/90 backdrop-blur-xl border border-white/60 ring-1 ring-slate-900/5 p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] relative overflow-hidden w-full">
                     <motion.div className="absolute top-[-50%] left-[-50%] w-full h-full bg-gradient-to-br from-teal-100/20 to-transparent rounded-full blur-3xl pointer-events-none" />
 
                     <motion.div className="relative z-10">
@@ -119,7 +119,7 @@ export const ParentAuth = () => {
                             >
                                 <span className="text-3xl font-bold text-white">P</span>
                             </motion.div>
-                            <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-cyan-600">
+                            <h2 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-cyan-600">
                                 {isLogin ? 'Welcome Back!' : 'Join Us'}
                             </h2>
                             <p className="text-slate-500 mt-2">

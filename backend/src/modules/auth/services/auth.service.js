@@ -129,7 +129,7 @@ export class AuthService {
         user: mapStudentUserDto({
           childId: child.id,
           name: child.name,
-          gradeLevel: child.gradeLevel,
+          gradeLevel: child.gradeLevelEnum ?? child.gradeLevel,
           avatarUrl: child.avatarUrl,
           parentId: null,
           age: undefined,

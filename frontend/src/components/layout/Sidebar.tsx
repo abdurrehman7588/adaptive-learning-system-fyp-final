@@ -65,22 +65,12 @@ export const Sidebar = ({ navItems, isOpen = false, onClose }: SidebarProps) => 
             </AnimatePresence>
 
             <motion.aside
-                initial={{ width: 288 }}
-                animate={{
-                    width: isCollapsed ? 80 : 288,
-                }}
-                // Implementing separate variants for desktop/mobile is cleaner but mixing with width requires care.
-                // Let's rely on classes for positioning and standard animate for width.
-                // Mobile Open/Close via CSS transform is easier.
-
                 className={cn(
-                    "flex flex-col border-r border-slate-200/60 h-screen sticky top-0 z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-in-out",
-                    // Desktop styles: always visible (reset transform)
-                    "md:translate-x-0",
-                    // Mobile styles: fixed, full height, slide in/out
-                    "fixed md:sticky left-0 top-0 bottom-0",
-                    isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-                    theme.bg
+                    'flex flex-col border-r border-slate-200/60 h-[100dvh] z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-in-out',
+                    'fixed md:sticky left-0 top-0 bottom-0 w-[min(18rem,88vw)] md:w-auto',
+                    isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+                    isCollapsed ? 'md:!w-20' : 'md:!w-72',
+                    theme.bg,
                 )}
             >
                 {/* Close Button Mobile */}
@@ -91,8 +81,10 @@ export const Sidebar = ({ navItems, isOpen = false, onClose }: SidebarProps) => 
                     <ChevronLeft className="w-6 h-6" />
                 </button>
                 <button
+                    type="button"
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="absolute -right-3 top-10 bg-white border border-slate-200 text-slate-500 rounded-full p-1 shadow-sm hover:text-indigo-600 hover:border-indigo-200 transition-colors z-50"
+                    className="hidden md:block absolute -right-3 top-10 bg-white border border-slate-200 text-slate-500 rounded-full p-1 shadow-sm hover:text-indigo-600 hover:border-indigo-200 transition-colors z-50 min-h-8 min-w-8"
+                    aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 >
                     {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
                 </button>
@@ -130,6 +122,7 @@ export const Sidebar = ({ navItems, isOpen = false, onClose }: SidebarProps) => 
                             <Link
                                 key={item.path}
                                 to={item.path}
+                                onClick={onClose}
                                 className="block relative group"
                             >
                                 {isActive && (

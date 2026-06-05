@@ -1,0 +1,17 @@
+# Render Blueprint — backend API (optional; you can mirror these settings in the dashboard)
+services:
+  - type: web
+    name: adaptive-learning-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

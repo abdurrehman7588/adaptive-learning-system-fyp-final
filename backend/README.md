@@ -20,6 +20,16 @@ npm run db:seed
 npm run dev
 ```
 
+## Production (Render)
+
+`npm start` runs migrations then the API. See [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md).
+
+```powershell
+npm run db:migrate      # manual: prisma migrate deploy
+npm start               # migrate deploy + generate + server
+npm run start:server    # skip migrate (local only)
+```
+
 API: `http://localhost:5000`  
 Health: `GET http://localhost:5000/api/health`
 

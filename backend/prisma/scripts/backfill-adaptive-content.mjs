@@ -27,6 +27,43 @@ function mapChildGrade(text) {
   return null;
 }
 
+/** @param {string | null | undefined} title */
+function slugifyFromTitle(title) {
+  if (!title?.trim()) return null;
+  const slug = title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug.length > 0 ? slug.slice(0, 80) : null;
+}
+
+function isMissingSlug(slug) {
+  return slug == null || String(slug).trim() === '';
+}
+
+/**
+ * @param {string} baseSlug
+ * @param {number} excludeQuizId
+ */
+async function ensureUniqueSlug(baseSlug, excludeQuizId) {
+  let candidate = baseSlug;
+  let suffix = 0;
+
+  while (true) {
+    const existing = await prisma.quiz.findFirst({
+      where: {
+        slug: candidate,
+        ...(excludeQuizId ? { NOT: { id: excludeQuizId } } : {}),
+      },
+      select: { id: true },
+    });
+    if (!existing) return candidate;
+    suffix += 1;
+    candidate = `${baseSlug}-${suffix}`;
+  }
+}
+
 async function backfillChildren() {
   const children = await prisma.child.findMany({
     select: { id: true, gradeLevel: true },
@@ -61,8 +98,48 @@ async function backfillQuizzes() {
     });
   }
 
-  const missingSlug = await prisma.quiz.count({ where: { slug: null } });
-  console.log(`Quizzes missing slug after backfill: ${missingSlug}`);
+  const quizzes = await prisma.quiz.findMany({
+    select: { id: true, title: true, slug: true },
+  });
+
+  /** @type {Array<{ id: number, title: string, slug: string | null }>} */
+  const problemQuizzes = quizzes.filter((quiz) => isMissingSlug(quiz.slug));
+
+  if (problemQuizzes.length > 0) {
+    console.log(
+      `Found ${problemQuizzes.length} quiz(es) with missing slug:`,
+      JSON.stringify(problemQuizzes, null, 2),
+    );
+  }
+
+  let repaired = 0;
+  for (const quiz of problemQuizzes) {
+    const generated = slugifyFromTitle(quiz.title);
+    if (!generated) {
+      console.warn(
+        `Quiz id=${quiz.id} title="${quiz.title}" — cannot generate slug from title; skipped`,
+      );
+      continue;
+    }
+
+    const uniqueSlug = await ensureUniqueSlug(generated, quiz.id);
+    await prisma.quiz.update({
+      where: { id: quiz.id },
+      data: { slug: uniqueSlug },
+    });
+    console.log(
+      `Quiz id=${quiz.id} title="${quiz.title}" — slug repaired: "${quiz.slug ?? ''}" → "${uniqueSlug}"`,
+    );
+    repaired += 1;
+  }
+
+  const remaining = (await prisma.quiz.findMany({ select: { slug: true } })).filter((quiz) =>
+    isMissingSlug(quiz.slug),
+  ).length;
+
+  console.log(
+    `Quizzes missing slug after backfill: ${remaining} (${repaired} repaired from ${problemQuizzes.length} problem record(s))`,
+  );
 }
 
 async function backfillAnsweredAt() {

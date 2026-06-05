@@ -38,11 +38,13 @@ export const EmotionalProfilePage = () => {
     }, [loadProfile]);
 
     return (
-        <div className="space-y-6 pb-8 p-6 md:p-8 font-sans max-w-3xl mx-auto">
+        <div className="w-full min-w-0 max-w-3xl mx-auto space-y-6 pb-8 px-4 py-5 sm:px-6 sm:py-6 md:px-8 font-sans">
             <header className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                     <Heart className="w-8 h-8 text-rose-500 fill-rose-200" />
-                    <h1 className="text-3xl font-black text-slate-800">Emotional Intelligence</h1>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-800 break-words">
+                        Emotional Intelligence
+                    </h1>
                 </div>
                 <p className="text-slate-500 font-medium">
                     Learn about feelings, empathy, and staying calm.
@@ -87,7 +89,7 @@ export const EmotionalProfilePage = () => {
                         <p className="text-sm font-bold text-violet-700 uppercase tracking-wide">
                             Overall EI Score
                         </p>
-                        <p className="text-5xl font-black text-slate-800 mt-1">
+                        <p className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-800 mt-1">
                             {Math.round(profile.overallScore ?? 0)}%
                         </p>
                         <span

@@ -14,7 +14,7 @@ export function mapStudentUserDto(identity) {
     name: identity.name,
     role: 'student',
     age: identity.age ?? 8,
-    grade: identity.gradeLevel ?? '1st Grade',
+    grade: identity.gradeLevel ?? null,
     parentId: identity.parentId ? String(identity.parentId) : undefined,
     avatar: identity.avatarUrl ?? undefined,
   };

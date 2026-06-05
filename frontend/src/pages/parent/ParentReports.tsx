@@ -138,7 +138,7 @@ export const ParentReports = () => {
                                 value={selectedChildId}
                                 onChange={(e) => handleSelectChild(Number(e.target.value))}
                                 disabled={isLoading || Boolean(error)}
-                                className="bg-white border border-slate-200 px-3 py-2 rounded-xl text-sm font-medium text-slate-700 min-w-[10rem]"
+                                className="bg-white border border-slate-200 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 w-full sm:w-auto sm:min-w-[10rem] max-w-full"
                             >
                                 {children.map((child) => (
                                     <option key={child.id} value={child.id}>

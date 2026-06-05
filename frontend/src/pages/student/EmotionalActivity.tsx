@@ -90,7 +90,7 @@ export const EmotionalActivityPage = () => {
     const canSubmitFeelings = feelingsStep === 3 && feeling && reason;
 
     return (
-        <div className="space-y-6 pb-8 p-6 md:p-8 font-sans max-w-xl mx-auto">
+        <div className="w-full min-w-0 max-w-xl mx-auto space-y-6 pb-8 px-4 py-5 sm:px-6 sm:py-6 md:px-8 font-sans">
             <Link
                 to="/student/emotional"
                 className="inline-flex items-center gap-1 text-sm font-bold text-slate-500 hover:text-teal-600"

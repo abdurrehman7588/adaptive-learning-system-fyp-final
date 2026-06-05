@@ -89,6 +89,7 @@ model Child {
   quizAttempts            QuizAttempt[]
   emotionalAssessments    EmotionalAssessment[]
   emotionalActivityCompletions EmotionalActivityCompletion[]
+  quizEmotionFeedback     QuizEmotionFeedback[]
 
   @@index([parentId])
   @@index([gradeLevel])
@@ -231,12 +232,29 @@ model QuizAttempt {
   completedAt DateTime?         @map("completed_at")
 
   quiz    Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  child   Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
-  answers QuizAttemptAnswer[]
+  child            Child                 @relation(fields: [childId], references: [id], onDelete: Cascade)
+  answers          QuizAttemptAnswer[]
+  emotionFeedback  QuizEmotionFeedback?
 
   @@index([childId])
   @@index([quizId, childId])
   @@map("quiz_attempts")
+}
+
+/// Optional post-quiz emotional check-in (one row per attempt; skip = no row).
+model QuizEmotionFeedback {
+  id            Int      @id @default(autoincrement())
+  childId       Int      @map("child_id")
+  quizAttemptId Int      @unique @map("quiz_attempt_id")
+  emotionLabel  String   @map("emotion_label")
+  emotionScore  Int      @map("emotion_score")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  child       Child       @relation(fields: [childId], references: [id], onDelete: Cascade)
+  quizAttempt QuizAttempt @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
+
+  @@index([childId, createdAt])
+  @@map("quiz_emotion_feedback")
 }
 
 model QuizAttemptAnswer {

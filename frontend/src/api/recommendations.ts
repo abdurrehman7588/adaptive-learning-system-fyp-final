@@ -35,8 +35,53 @@ export type LearningCategoryStat = CategoryInsight & {
     recommendedDifficulty: string;
 };
 
+export type EmotionalSignalSource = 'quiz_feedback' | 'sdq_assessment' | 'neutral_default';
+
+export type TierRecommendationFeatures = {
+    average_score: number;
+    quiz_attempts: number;
+    completion_rate: number;
+    emotional_score: number | null;
+    emotional_assessed?: boolean;
+    emotional_signal_source?: EmotionalSignalSource;
+    quiz_emotion_label?: string | null;
+    performance_trend?: number;
+    learning_speed?: number;
+    mastery_score?: number;
+    trendDirection?: 'improving' | 'stable' | 'declining' | 'insufficient_data';
+};
+
+export type NextLearningPath = {
+    focusCategory: string;
+    focusLabel: string;
+    strategy: string;
+    reason: string;
+};
+
+export type AdaptiveProfileSummary = {
+    adaptiveScore: number;
+    learnerLevel: 'beginner' | 'developing' | 'progressing' | 'advanced';
+    recommendedDifficulty: string;
+    nextLearningPath: NextLearningPath;
+    blend?: { ml: string; adaptive: string; mlWeight: number; adaptiveWeight: number } | null;
+};
+
+export type TierRecommendation = {
+    recommendation: 'Easy' | 'Medium' | 'Hard';
+    confidence: number;
+    source: 'model' | 'rules' | 'hybrid_ml_adaptive' | 'hybrid_rules_adaptive' | 'adaptive_score' | string;
+    features?: TierRecommendationFeatures | null;
+    reasoningSummary?: string;
+    adaptiveScore?: number | null;
+    learnerLevel?: AdaptiveProfileSummary['learnerLevel'] | null;
+    nextLearningPath?: NextLearningPath | null;
+    blend?: AdaptiveProfileSummary['blend'];
+};
+
 export type LearningProfile = {
     adaptiveEnabled: boolean;
+    adaptiveProfile?: AdaptiveProfileSummary | null;
+    tierRecommendation?: TierRecommendation | null;
     categories: LearningCategoryStat[];
     weakest: CategoryInsight | null;
     strongest: CategoryInsight | null;
@@ -60,6 +105,9 @@ export type AdaptiveInsights = {
     suggestedNextActivity: AdaptiveNextStep | null;
     weakestCategory: CategoryInsight | null;
     strongestCategory: CategoryInsight | null;
+    nextLearningPath?: NextLearningPath | null;
+    adaptiveScore?: number | null;
+    learnerLevel?: AdaptiveProfileSummary['learnerLevel'] | null;
 };
 
 export type TargetConcept = {
@@ -82,6 +130,7 @@ export type RecommendedQuiz = {
     adaptiveAction?: AdaptiveAction;
     recommendedDifficulty?: string;
     recommendedDifficultyLabel?: string;
+    difficultyLevel?: string;
     gradeLevel?: string | null;
     timeLimitMinutes?: number | null;
     questionCount: number;

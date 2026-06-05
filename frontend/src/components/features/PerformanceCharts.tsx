@@ -68,7 +68,7 @@ export const PerformanceCharts = ({
     }
 
     return (
-        <div className="grid md:grid-cols-2 gap-8 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 p-4 sm:p-6 w-full min-w-0">
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
@@ -84,7 +84,7 @@ export const PerformanceCharts = ({
                         {trendLabel}
                     </span>
                 </div>
-                <div className="h-[250px] w-full">
+                <div className="h-[220px] sm:h-[250px] w-full min-w-0">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={weeklyData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -134,7 +134,7 @@ export const PerformanceCharts = ({
                         </span>
                     )}
                 </div>
-                <div className="h-[250px] w-full">
+                <div className="h-[220px] sm:h-[250px] w-full min-w-0">
                     {subjectData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={subjectData}>

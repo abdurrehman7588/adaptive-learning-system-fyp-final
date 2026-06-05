@@ -3,7 +3,8 @@ import { useActiveLearnerProfile } from '../../hooks/useActiveLearnerProfile';
 import { Card } from '../../components/ui/Card';
 import { BarChart3, Clock, Play, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { StudentTopQuizPicks } from '../../components/features/student/StudentTopQuizPicks';
+import { AiRecommendedLevelBadge } from '../../components/features/ai/AiRecommendedLevelBadge';
+import { AiChallengeOfTheDay } from '../../components/features/ai/AiChallengeOfTheDay';
 import { StudentRewardsSummary } from '../../components/features/rewards/StudentRewardsSummary';
 import { StudentEmotionalSummary } from '../../components/features/emotional/StudentEmotionalSummary';
 import {
@@ -13,7 +14,6 @@ import {
     type LearningProfile,
     type RecommendedQuiz,
 } from '../../api/recommendations';
-import { getCategoryDef, type LearningCategoryId } from '../../lib/learningCategories';
 import {
     fetchChildAnalytics,
     formatRelativeTime,
@@ -29,6 +29,14 @@ import {
 } from '../../api/rewards';
 import { useStudentGradeScope } from '../../hooks/useStudentGradeScope';
 import { resolveActiveChildId } from '../../lib/activeChild';
+import {
+    dashboardSection,
+    dashboardSectionTitle,
+    pageHeading,
+    pageShell,
+    pageSubheading,
+} from '../../lib/responsive';
+import { cn } from '../../lib/utils';
 import { getToken } from '../../lib/tokenStorage';
 
 export const StudentDashboard = () => {
@@ -127,34 +135,13 @@ export const StudentDashboard = () => {
 
     const completedQuizzes = analytics?.summary.completedAttempts ?? 0;
     const averagePercent = Math.round(analytics?.summary.averageScorePercent ?? 0);
-    const strongest = analytics?.summary.strongestSubject;
-    const weakest = analytics?.summary.weakestSubject;
     const recentHistory = analytics?.recentHistory ?? [];
 
     const adaptiveEnabled = learningProfile?.adaptiveEnabled ?? false;
-    const focusArea = adaptiveInsights?.focusArea;
-    const strongestArea = adaptiveInsights?.strongestArea;
+    const tierRecommendation = learningProfile?.tierRecommendation ?? null;
     const whatsNext = adaptiveInsights?.whatsNext;
 
-    const focusLabel = adaptiveEnabled
-        ? focusArea
-            ? `${focusArea.label}${focusArea.averagePercent != null ? ` (${Math.round(focusArea.averagePercent)}%)` : ''}`
-            : 'Explore all paths'
-        : weakest && weakest.subject !== strongest?.subject
-          ? weakest.label
-          : 'Balanced';
-
-    const strongestLabel = adaptiveEnabled
-        ? strongestArea
-            ? `${strongestArea.label}${strongestArea.averagePercent != null ? ` (${Math.round(strongestArea.averagePercent)}%)` : ''}`
-            : focusArea
-              ? 'More quizzes to compare'
-              : '—'
-        : strongest
-          ? strongest.label
-          : '—';
-
-    const whatsNextStep = useMemo(() => {
+    const recommendedNext = useMemo(() => {
         if (whatsNext) return whatsNext;
         if (!topPick) return null;
         return {
@@ -170,69 +157,48 @@ export const StudentDashboard = () => {
     }, [whatsNext, topPick]);
 
     return (
-        <div className="space-y-6 pb-8 p-6 md:p-8 font-sans">
+        <div className={cn(pageShell, 'space-y-5 sm:space-y-6 pb-6 sm:pb-8 font-sans')}>
             <header className="flex flex-col gap-2 w-full">
-                <span className="inline-block text-4xl mb-1">👋</span>
-                <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-600 tracking-tight transform -rotate-1">
+                <span className="inline-block text-3xl sm:text-4xl mb-1">👋</span>
+                <h1
+                    className={cn(
+                        pageHeading,
+                        'text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-600 sm:transform sm:-rotate-1',
+                    )}
+                >
                     Hi, {learnerFirstName}!
                 </h1>
-                <p className="text-slate-500 font-bold text-lg">
+                <p className={cn(pageSubheading, 'text-slate-500')}>
                     {gradeLabel ? `${gradeLabel} learning paths` : 'Ready for a magical learning adventure?'} 🚀
                 </p>
             </header>
 
-            {getToken() && (
-                <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <BarChart3 className="w-6 h-6 text-sky-600" />
-                        <h2 className="text-2xl font-black text-slate-700">Performance summary</h2>
-                    </div>
-                    {analyticsError && (
-                        <p className="text-sm text-orange-600 mb-3">{analyticsError}</p>
-                    )}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <PerformanceChip
-                            label="Quizzes done"
-                            value={analyticsLoading ? '…' : String(completedQuizzes)}
-                        />
-                        <PerformanceChip
-                            label="Average score"
-                            value={analyticsLoading ? '…' : `${averagePercent}%`}
-                        />
-                        <PerformanceChip
-                            label="Strongest area"
-                            value={
-                                recommendationsLoading || analyticsLoading
-                                    ? '…'
-                                    : strongestLabel
-                            }
-                            small
-                        />
-                        <PerformanceChip
-                            label="Focus area"
-                            value={
-                                recommendationsLoading || analyticsLoading
-                                    ? '…'
-                                    : focusLabel
-                            }
-                            small
-                        />
-                    </div>
+            {getToken() && adaptiveEnabled && (
+                <section className={dashboardSection}>
+                    <AiRecommendedLevelBadge
+                        tierRecommendation={tierRecommendation}
+                        isLoading={recommendationsLoading}
+                    />
+                    <AiChallengeOfTheDay
+                        recommendations={recommendations}
+                        tierRecommendation={tierRecommendation}
+                        isLoading={recommendationsLoading}
+                    />
                 </section>
             )}
 
             {getToken() && (
-                <section>
-                    <div className="flex items-center gap-2 mb-3">
-                        <Sparkles className="w-6 h-6 text-violet-600" />
-                        <h2 className="text-2xl font-black text-slate-700">What&apos;s next?</h2>
-                    </div>
+                <section className={dashboardSection}>
+                    <h2 className={dashboardSectionTitle}>
+                        <Sparkles className="w-6 h-6 text-violet-600 shrink-0" aria-hidden />
+                        Recommended next quiz
+                    </h2>
                     {recommendationsLoading ? (
-                        <Card className="p-6 rounded-3xl border-2 border-violet-100 bg-violet-50/40">
+                        <Card className="p-5 sm:p-6 rounded-2xl border-2 border-violet-100 bg-violet-50/40">
                             <p className="text-sm font-medium text-slate-500">Loading your next quiz…</p>
                         </Card>
                     ) : recommendationsError ? (
-                        <Card className="p-6 rounded-3xl border-2 border-orange-100 bg-orange-50/40">
+                        <Card className="p-5 sm:p-6 rounded-2xl border-2 border-orange-100 bg-orange-50/40">
                             <p className="text-sm text-orange-700">{recommendationsError}</p>
                             <button
                                 type="button"
@@ -242,34 +208,34 @@ export const StudentDashboard = () => {
                                 Try again
                             </button>
                         </Card>
-                    ) : whatsNextStep ? (
-                        <Card className="p-5 md:p-6 rounded-3xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm">
+                    ) : recommendedNext ? (
+                        <Card className="p-5 sm:p-6 rounded-2xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm">
                             <p className="text-sm font-bold text-violet-800 uppercase tracking-wide">
-                                {whatsNextStep.label}
-                                {whatsNextStep.adaptiveAction
-                                    ? ` · ${whatsNextStep.adaptiveAction}`
+                                {recommendedNext.label}
+                                {recommendedNext.adaptiveAction
+                                    ? ` · ${recommendedNext.adaptiveAction}`
                                     : ''}
                             </p>
-                            <p className="font-black text-slate-800 text-xl mt-1">
-                                {whatsNextStep.title}
+                            <p className="font-black text-slate-800 text-lg sm:text-xl mt-1 break-words">
+                                {recommendedNext.title}
                             </p>
-                            <p className="text-sm text-slate-600 mt-2">{whatsNextStep.reason}</p>
+                            <p className="text-sm text-slate-600 mt-2">{recommendedNext.reason}</p>
                             <Link
-                                to={`/student/quiz/${whatsNextStep.quizId}`}
-                                className="inline-flex mt-4 items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold px-5 py-3 rounded-xl transition-colors"
+                                to={`/student/quiz/${recommendedNext.quizId}`}
+                                className="inline-flex mt-4 items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold px-5 py-3 rounded-xl transition-colors min-h-11"
                             >
                                 Start this quiz
-                                <Play className="w-5 h-5 fill-current" />
+                                <Play className="w-5 h-5 fill-current shrink-0" aria-hidden />
                             </Link>
                         </Card>
                     ) : (
-                        <Card className="p-6 rounded-3xl border-2 border-slate-100 bg-white">
+                        <Card className="p-5 sm:p-6 rounded-2xl border-2 border-slate-100 bg-white">
                             <p className="text-sm text-slate-600">
                                 Browse learning paths to pick your first quiz.
                             </p>
                             <Link
                                 to="/student/quizzes"
-                                className="inline-flex mt-3 text-sm font-bold text-violet-700 hover:underline"
+                                className="inline-flex mt-3 text-sm font-bold text-violet-700 hover:underline min-h-11 items-center"
                             >
                                 View all quizzes →
                             </Link>
@@ -278,65 +244,35 @@ export const StudentDashboard = () => {
                 </section>
             )}
 
-            {getToken() && adaptiveEnabled && learningProfile && !recommendationsLoading && (
-                <section>
-                    <h2 className="text-lg font-black text-slate-700 mb-2">Learning profile</h2>
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                        {learningProfile.categories.map((row) => {
-                            const def = getCategoryDef(row.category as LearningCategoryId);
-                            const pct =
-                                row.averagePercent != null
-                                    ? `${Math.round(row.averagePercent)}%`
-                                    : '—';
-                            return (
-                                <div
-                                    key={row.category}
-                                    className="rounded-xl border border-slate-100 bg-white px-2 py-2 text-center"
-                                >
-                                    <p className="text-[10px] font-bold text-slate-500 truncate">
-                                        {def.shortLabel}
-                                    </p>
-                                    <p className="font-black text-slate-800 text-sm">{pct}</p>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-            )}
-
             {getToken() && (
-                <section>
-                    <div className="flex items-center justify-between gap-2 mb-4">
-                        <div className="flex items-center gap-2">
-                            <Sparkles className="w-6 h-6 text-orange-500" />
-                            <h2 className="text-2xl font-black text-slate-700">Top picks</h2>
-                        </div>
-                        <Link
-                            to="/student/quizzes"
-                            className="text-sm font-bold text-orange-600 hover:underline shrink-0"
-                        >
-                            All paths →
-                        </Link>
-                    </div>
-                    <Card className="p-5 md:p-6 rounded-3xl border-2 border-orange-100 bg-white/80">
-                        <StudentTopQuizPicks
-                            recommendations={recommendations}
-                            isLoading={recommendationsLoading}
-                            error={recommendationsError}
-                            onRetry={() => void loadRecommendations()}
-                            maxItems={3}
+                <section className={dashboardSection}>
+                    <h2 className={dashboardSectionTitle}>
+                        <BarChart3 className="w-6 h-6 text-sky-600 shrink-0" aria-hidden />
+                        Quick stats
+                    </h2>
+                    {analyticsError && (
+                        <p className="text-sm text-orange-600">{analyticsError}</p>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                        <PerformanceChip
+                            label="Quizzes done"
+                            value={analyticsLoading ? '…' : String(completedQuizzes)}
                         />
-                    </Card>
+                        <PerformanceChip
+                            label="Average score"
+                            value={analyticsLoading ? '…' : `${averagePercent}%`}
+                        />
+                    </div>
                 </section>
             )}
 
             {getToken() && (
-                <section>
-                    <div className="flex items-center gap-2 mb-4">
-                        <Clock className="w-6 h-6 text-slate-600" />
-                        <h2 className="text-2xl font-black text-slate-700">Recent activity</h2>
-                    </div>
-                    <Card className="p-5 md:p-6 rounded-3xl border-2 border-slate-100 bg-white">
+                <section className={dashboardSection}>
+                    <h2 className={dashboardSectionTitle}>
+                        <Clock className="w-6 h-6 text-slate-600 shrink-0" aria-hidden />
+                        Recent activity
+                    </h2>
+                    <Card className="p-4 sm:p-5 rounded-2xl border-2 border-slate-100 bg-white">
                         {analyticsLoading ? (
                             <p className="text-slate-500 text-sm font-medium py-4 text-center">
                                 Loading activity...
@@ -346,7 +282,7 @@ export const StudentDashboard = () => {
                                 Complete a quiz to see your recent activity here.
                             </p>
                         ) : (
-                            <ul className="space-y-3">
+                            <ul className="space-y-2">
                                 {recentHistory.slice(0, 5).map((attempt) => (
                                     <RecentActivityRow key={attempt.attemptId} attempt={attempt} />
                                 ))}
@@ -375,46 +311,33 @@ export const StudentDashboard = () => {
     );
 };
 
-function PerformanceChip({
-    label,
-    value,
-    small,
-}: {
-    label: string;
-    value: string;
-    small?: boolean;
-}) {
+function PerformanceChip({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-2xl bg-white border-2 border-sky-100 px-4 py-3 shadow-sm">
+        <div className="rounded-2xl bg-white border-2 border-sky-100 px-4 py-3 shadow-sm min-h-[4.5rem] flex flex-col justify-center">
             <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wide">{label}</p>
-            <p
-                className={`font-black text-slate-800 mt-1 leading-tight ${
-                    small ? 'text-sm md:text-base' : 'text-xl'
-                }`}
-            >
-                {value}
-            </p>
+            <p className="font-black text-slate-800 mt-1 text-lg leading-tight">{value}</p>
         </div>
     );
 }
 
 function RecentActivityRow({ attempt }: { attempt: RecentAttempt }) {
     return (
-        <li className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+        <li className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3 sm:px-4 py-2.5">
             <div className="min-w-0">
-                <p className="font-bold text-slate-800 truncate">{attempt.quizTitle}</p>
-                <p className="text-xs text-slate-500">
+                <p className="font-bold text-slate-800 truncate text-sm">{attempt.quizTitle}</p>
+                <p className="text-xs text-slate-500 truncate">
                     {attempt.subjectLabel} · {formatRelativeTime(attempt.completedAt)}
                 </p>
             </div>
             <span
-                className={`shrink-0 font-black text-sm px-2.5 py-1 rounded-lg ${
+                className={cn(
+                    'shrink-0 font-black text-sm px-2.5 py-1 rounded-lg',
                     attempt.percentage >= 80
                         ? 'bg-emerald-100 text-emerald-700'
                         : attempt.percentage >= 60
                           ? 'bg-sky-100 text-sky-700'
-                          : 'bg-amber-100 text-amber-700'
-                }`}
+                          : 'bg-amber-100 text-amber-700',
+                )}
             >
                 {Math.round(attempt.percentage)}%
             </span>

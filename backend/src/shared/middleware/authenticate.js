@@ -36,8 +36,11 @@ export function authenticate(req, res, next) {
       auth.parentId = claims.parentId ? String(claims.parentId) : String(claims.sub);
     }
 
-    if (claims.role === 'student' && claims.childId) {
-      auth.childId = String(claims.childId);
+    if (claims.role === 'student') {
+      const childId = claims.childId ?? claims.sub;
+      if (childId) {
+        auth.childId = String(childId);
+      }
     }
 
     req.auth = auth;

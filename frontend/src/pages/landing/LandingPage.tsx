@@ -70,7 +70,7 @@ export const LandingPage = () => {
                         <Sparkles className="w-5 h-5 text-yellow-500 mr-2" />
                         <span className="text-sm md:text-base font-black text-orange-600 tracking-wide uppercase">Fun Learning for Ages 4-12 🦁</span>
                     </motion.div>
-                    <h1 className="text-5xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 mb-6 drop-shadow-sm tracking-tight leading-tight transform -rotate-2">
+                    <h1 className="text-3xl sm:text-5xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 mb-6 drop-shadow-sm tracking-tight leading-tight sm:transform sm:-rotate-2 px-2">
                         Kids Learning <br className="md:hidden" /><span className="text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.2)]">Platform</span>
                     </h1>
                     <p className="text-lg md:text-2xl text-slate-700 font-bold max-w-2xl mx-auto leading-relaxed px-4 drop-shadow-sm">
@@ -97,7 +97,9 @@ export const LandingPage = () => {
                                         <MascotBear className="w-40 h-40 z-10 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3" />
                                     </div>
                                     <div>
-                                        <h2 className="text-4xl font-black text-slate-800 mb-3 group-hover:text-orange-600 transition-colors">I'm a Student</h2>
+                                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-800 mb-3 group-hover:text-orange-600 transition-colors">
+                                            I&apos;m a Student
+                                        </h2>
                                         <p className="text-lg font-medium text-slate-600 mb-8">Play quizzes, collect badges, and explore new worlds!</p>
                                     </div>
                                     <div className="w-full">
@@ -125,7 +127,9 @@ export const LandingPage = () => {
                                         <MascotOwl className="w-44 h-44 z-10 transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-3" />
                                     </div>
                                     <div>
-                                        <h2 className="text-4xl font-black text-slate-800 mb-3 group-hover:text-teal-600 transition-colors">I'm a Parent</h2>
+                                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-800 mb-3 group-hover:text-teal-600 transition-colors">
+                                            I&apos;m a Parent
+                                        </h2>
                                         <p className="text-lg font-medium text-slate-600 mb-8">Track progress, view insights, and manage accounts.</p>
                                     </div>
                                     <div className="w-full">

@@ -46,7 +46,7 @@ export const EmotionalInsights = () => {
     }, [loadInsights]);
 
     return (
-        <div className="space-y-6 p-6 lg:p-10 max-w-4xl mx-auto">
+        <div className="w-full min-w-0 space-y-6 px-4 py-5 sm:px-6 sm:py-8 lg:px-10 lg:py-10 max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Heart className="w-7 h-7 text-rose-500" />
                 Emotional Intelligence Insights
@@ -79,7 +79,7 @@ export const EmotionalInsights = () => {
                         <div className="flex justify-between items-start gap-4">
                             <div>
                                 <h3 className="font-bold text-lg">Overall EI Score</h3>
-                                <p className="text-4xl font-black text-slate-800 mt-2">
+                                <p className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-800 mt-2">
                                     {Math.round(profile.overallScore ?? 0)}%
                                 </p>
                                 <p className="text-sm text-slate-500 mt-1">

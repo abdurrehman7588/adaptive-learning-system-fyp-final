@@ -3,9 +3,11 @@ import {
   normalizeLearningCategory,
   resolveQuizSubject,
 } from '../../shared/content/taxonomy.js';
+import { buildRecommendationReasoning } from '../ai/services/recommendationReasoning.service.js';
 import {
   FROZEN_LEARNING_CATEGORIES,
   isAdaptiveGrade,
+  recommendationLabelToDifficulty,
   recommendedDifficultyForStatus,
   resolveCategoryStatus,
 } from './adaptiveRules.js';
@@ -26,10 +28,24 @@ function attemptPercent(attempt) {
 /**
  * @param {import('@prisma/client').QuizAttempt[]} attempts
  * @param {import('@prisma/client').GradeLevel | null | undefined} childGradeLevel
+ * @param {{
+ *   recommendation: 'Easy' | 'Medium' | 'Hard',
+ *   confidence: number,
+ *   source?: string,
+ *   features?: {
+ *     average_score: number,
+ *     quiz_attempts: number,
+ *     completion_rate: number,
+ *     emotional_score: number,
+ *   },
+ * } | null} [tierPrediction]
  */
-export function buildLearningProfile(attempts, childGradeLevel) {
+export function buildLearningProfile(attempts, childGradeLevel, tierPrediction = null) {
   const adaptiveEnabled = isAdaptiveGrade(childGradeLevel);
   const completed = attempts.filter((row) => row.status === 'completed');
+  const globalDifficulty = tierPrediction
+    ? recommendationLabelToDifficulty(tierPrediction.recommendation)
+    : null;
 
   /** @type {Map<string, { total: number, count: number }>} */
   const byCategory = new Map();
@@ -57,7 +73,8 @@ export function buildLearningProfile(attempts, childGradeLevel) {
       averagePercent,
       attemptCount,
       status,
-      recommendedDifficulty: recommendedDifficultyForStatus(status),
+      recommendedDifficulty:
+        globalDifficulty ?? recommendedDifficultyForStatus(status),
     };
   });
 
@@ -79,8 +96,35 @@ export function buildLearningProfile(attempts, childGradeLevel) {
         ? strongestCandidate
         : null;
 
+  const adaptiveProfile = tierPrediction?.adaptiveProfile ?? null;
+
   return {
     adaptiveEnabled,
+    adaptiveProfile: adaptiveProfile
+      ? {
+          adaptiveScore: adaptiveProfile.adaptiveScore,
+          learnerLevel: adaptiveProfile.learnerLevel,
+          recommendedDifficulty: adaptiveProfile.recommendedDifficulty,
+          nextLearningPath: adaptiveProfile.nextLearningPath,
+          blend: adaptiveProfile.blend ?? null,
+        }
+      : null,
+    tierRecommendation: tierPrediction
+      ? {
+          recommendation: tierPrediction.recommendation,
+          confidence: tierPrediction.confidence,
+          source: tierPrediction.source ?? 'model',
+          features: tierPrediction.features ?? null,
+          reasoningSummary: buildRecommendationReasoning({
+            ...tierPrediction,
+            adaptiveProfile,
+          }),
+          adaptiveScore: adaptiveProfile?.adaptiveScore ?? null,
+          learnerLevel: adaptiveProfile?.learnerLevel ?? null,
+          nextLearningPath: adaptiveProfile?.nextLearningPath ?? null,
+          blend: adaptiveProfile?.blend ?? null,
+        }
+      : null,
     categories,
     weakest: weakest
       ? {

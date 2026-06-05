@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node scripts/start-production.mjs",
+    "start:server": "node src/server.js",
     "dev": "node --watch src/server.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
@@ -28,6 +29,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
+    "prisma": "^6.19.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
@@ -37,8 +39,5 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "zod": "^3.25.76"
-  },
-  "devDependencies": {
-    "prisma": "^6.19.0"
   }
 }

@@ -54,7 +54,7 @@ export const EmotionalCategoryDetailPage = () => {
     }
 
     return (
-        <div className="space-y-6 pb-8 p-6 md:p-8 font-sans max-w-2xl mx-auto">
+        <div className="w-full min-w-0 max-w-2xl mx-auto space-y-6 pb-8 px-4 py-5 sm:px-6 sm:py-6 md:px-8 font-sans">
             <Link
                 to="/student/emotional"
                 className="inline-flex items-center gap-1 text-sm font-bold text-slate-500 hover:text-rose-600"
@@ -99,7 +99,7 @@ export const EmotionalCategoryDetailPage = () => {
                         <div className="flex items-end justify-between gap-4">
                             <div>
                                 <p className="text-sm font-bold text-violet-700 uppercase">Your score</p>
-                                <p className="text-5xl font-black text-slate-800 mt-1">
+                                <p className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-800 mt-1">
                                     {Math.round(category.percent)}%
                                 </p>
                                 <span

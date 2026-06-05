@@ -36,7 +36,7 @@ export function OnboardingShell({
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="rounded-3xl border border-white/80 bg-white/95 p-8 shadow-xl shadow-teal-500/10"
+                    className="rounded-2xl sm:rounded-3xl border border-white/80 bg-white/95 p-5 sm:p-8 shadow-xl shadow-teal-500/10 w-full min-w-0"
                 >
                     <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
                     <p className="mt-2 text-slate-600">{subtitle}</p>

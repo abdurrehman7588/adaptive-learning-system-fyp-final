@@ -15,8 +15,13 @@ import {
   createAttemptRouter,
 } from './modules/quiz/index.js';
 import { createAnalyticsModule, createAnalyticsRouter } from './modules/analytics/index.js';
+import { createAiModule, createAiRouter } from './modules/ai/index.js';
 import { createRewardsModule, createRewardsRouter } from './modules/rewards/index.js';
 import { createEmotionalModule, createEmotionalRouter } from './modules/emotional/index.js';
+import {
+  createEmotionFeedbackModule,
+  createEmotionFeedbackRouter,
+} from './modules/emotion-feedback/index.js';
 import { ParentUserReadAdapter } from './modules/auth/adapters/parentUserRead.adapter.js';
 import { logger } from './shared/utils/logger.js';
 
@@ -53,14 +58,25 @@ export function createApp(options = {}) {
 
   const parentModule = createParentModule({ childQueryPort, parentUserReadPort });
   const quizModule = createQuizModule({ childQueryPort });
-  const analyticsModule = createAnalyticsModule({ childQueryPort });
   const emotionalModule = createEmotionalModule({ childQueryPort });
+  const emotionFeedbackModule = createEmotionFeedbackModule({ childQueryPort });
+  const aiModule = createAiModule({
+    childQueryPort,
+    emotionalRepository: emotionalModule.emotionalRepository,
+    emotionFeedbackRepository: emotionFeedbackModule.emotionFeedbackRepository,
+  });
+  const analyticsModule = createAnalyticsModule({
+    childQueryPort,
+    recommendationPredictionService: aiModule.recommendationPredictionService,
+  });
   const rewardsModule = createRewardsModule({
     childQueryPort,
     emotionalOrchestrator: emotionalModule.orchestrator,
   });
 
   app.use('/api/health', createHealthRouter());
+  app.use('/api/emotion-feedback', createEmotionFeedbackRouter(emotionFeedbackModule));
+  app.use('/api/ai', createAiRouter(aiModule));
   app.use('/api/parent', createParentRouter(parentModule));
   app.use(
     '/api/auth',

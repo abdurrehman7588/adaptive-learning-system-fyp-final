@@ -1,6 +1,7 @@
 import { parseGradeLevel } from '../../../shared/content/taxonomy.js';
 import { ChildLimitError } from '../errors/child.errors.js';
 import { ChildNotFoundError } from '../errors/child.errors.js';
+import { ChildValidationError } from '../errors/child.errors.js';
 import { toChildResponse } from '../mappers/childDto.mapper.js';
 import { ChildOwnershipRules } from './childOwnership.rules.js';
 import { ChildCredentialService } from './childCredential.service.js';
@@ -30,13 +31,19 @@ export class ChildProfileService {
     const username = this.credentialService.normalizeUsername(dto.username);
     await this.credentialService.assertUsernameAvailable(username);
     const pinHash = await this.credentialService.hashPin(dto.pin);
+    const gradeLevel = parseGradeLevel(dto.grade_level);
+    if (!gradeLevel) {
+      throw new ChildValidationError('Please select a valid grade level', [
+        { field: 'grade_level', message: 'Grade must be Pre-K through Grade 6' },
+      ]);
+    }
 
     const row = await this.childRepository.insert({
       parentId: Number(parentId),
       name: dto.name.trim(),
       username,
       pinHash,
-      gradeLevel: parseGradeLevel(dto.grade_level),
+      gradeLevel,
       avatarUrl: dto.avatar_url?.trim() || null,
       age: dto.age ?? null,
       dateOfBirth: dto.date_of_birth ? new Date(dto.date_of_birth) : null,

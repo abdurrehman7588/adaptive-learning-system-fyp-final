@@ -45,6 +45,8 @@ import {
     getRecommendationsErrorMessage,
     type ChildRecommendations,
 } from '../../api/recommendations';
+import { AiRecommendationCard } from '../../components/features/ai/AiRecommendationCard';
+import { pageShellWide, dashboardSection, dashboardSectionTitle } from '../../lib/responsive';
 
 type ChildWithAnalytics = {
     id: number;
@@ -225,6 +227,7 @@ export const ParentDashboard = () => {
     const weakest = summary?.weakestSubject;
 
     const adaptiveEnabled = selectedLearningProfile?.adaptiveEnabled ?? false;
+    const tierRecommendation = selectedLearningProfile?.tierRecommendation ?? null;
     const weakestCategory = selectedAdaptiveInsights?.weakestCategory;
     const strongestCategory = selectedAdaptiveInsights?.strongestCategory;
     const suggestedNext = selectedAdaptiveInsights?.suggestedNextActivity;
@@ -252,7 +255,10 @@ export const ParentDashboard = () => {
 
     return (
         <motion.div
-            className="space-y-8 p-6 lg:p-10 min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50 relative overflow-hidden"
+            className={cn(
+                pageShellWide,
+                'space-y-5 sm:space-y-6 w-full min-w-0 bg-gradient-to-br from-teal-50 via-white to-cyan-50 relative',
+            )}
         >
             <div className="absolute top-0 left-0 w-96 h-96 bg-teal-100/50 rounded-full mix-blend-multiply filter blur-3xl opacity-60 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
             <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-100/50 rounded-full mix-blend-multiply filter blur-3xl opacity-60 translate-x-1/2 -translate-y-1/2 pointer-events-none" />
@@ -260,7 +266,7 @@ export const ParentDashboard = () => {
 
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 relative z-10">
                 <div>
-                    <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-cyan-600 tracking-tight">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-cyan-600 tracking-tight break-words">
                         Welcome back, {user?.name?.split(' ')[0] || 'Parent'}!
                     </h1>
                     <p className="text-slate-500 mt-2 text-lg">
@@ -276,7 +282,7 @@ export const ParentDashboard = () => {
                             <select
                                 value={selectedChildId}
                                 onChange={(event) => handleChildChange(Number(event.target.value))}
-                                className="text-sm font-medium text-slate-700 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 min-w-[12rem]"
+                                className="text-sm font-medium text-slate-700 bg-white px-3 py-2.5 rounded-xl shadow-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 w-full sm:w-auto sm:min-w-[12rem] max-w-full"
                                 aria-label="Select child"
                             >
                                 {children.map((child) => (
@@ -317,7 +323,7 @@ export const ParentDashboard = () => {
 
             {selectedChild && !isLoading && (
                 <>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 relative z-10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 relative z-10">
                         <StatsCard
                             title="Quizzes Completed"
                             value={String(completedCount)}
@@ -390,6 +396,20 @@ export const ParentDashboard = () => {
                             trendColor="text-emerald-600"
                         />
                     </div>
+
+                    {adaptiveEnabled && (
+                        <section className={cn(dashboardSection, 'relative z-10')}>
+                            <h2 className={dashboardSectionTitle}>
+                                <Brain className="w-6 h-6 text-teal-600 shrink-0" aria-hidden />
+                                AI learning insights
+                            </h2>
+                            <AiRecommendationCard
+                                tierRecommendation={tierRecommendation}
+                                isLoading={recommendationsLoading}
+                                childName={selectedChild.name}
+                            />
+                        </section>
+                    )}
 
                     {adaptiveEnabled && suggestedNext && (
                         <div className="relative z-10 rounded-2xl border border-teal-100 bg-white/90 p-5 shadow-sm">
@@ -500,7 +520,7 @@ export const ParentDashboard = () => {
                 </div>
             </section>
 
-            <div className="grid lg:grid-cols-3 gap-8 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 relative z-10 min-w-0">
                 <div className="lg:col-span-2 space-y-8">
                     <section>
                         <div className="flex items-center justify-between mb-6">

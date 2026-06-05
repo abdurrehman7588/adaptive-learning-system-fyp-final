@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useLocation, Link, Navigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
+import { PostQuizEmotionFeedbackModal } from '../../components/features/emotional/PostQuizEmotionFeedbackModal';
 import { CheckCircle, XCircle, Home, RotateCcw } from 'lucide-react';
 import type { SubmittedAnswerRow } from '../../api/attempts';
 import type { QuizResult, Quiz } from '../../types';
@@ -12,12 +14,24 @@ export const QuizResultPage = () => {
         result: QuizResult;
         quiz: Quiz;
         submittedToServer?: boolean;
+        serverAttemptId?: number;
         gradedByQuestionId?: Record<string, SubmittedAnswerRow>;
     } | null;
 
+    const showEmotionPrompt = Boolean(
+        state?.submittedToServer && typeof state.serverAttemptId === 'number',
+    );
+    const [emotionPromptOpen, setEmotionPromptOpen] = useState(showEmotionPrompt);
+
     if (!state) return <Navigate to="/student/quizzes" />;
 
-    const { result, quiz, submittedToServer = false, gradedByQuestionId = {} } = state;
+    const {
+        result,
+        quiz,
+        submittedToServer = false,
+        serverAttemptId,
+        gradedByQuestionId = {},
+    } = state;
     const percentage = Math.round((result.score / result.totalQuestions) * 100);
 
     // Simple feedback logic
@@ -29,6 +43,14 @@ export const QuizResultPage = () => {
 
     return (
         <div className="max-w-3xl mx-auto py-8 text-center space-y-8">
+            {showEmotionPrompt && serverAttemptId != null && (
+                <PostQuizEmotionFeedbackModal
+                    open={emotionPromptOpen}
+                    quizAttemptId={serverAttemptId}
+                    quizTitle={quiz.title}
+                    onComplete={() => setEmotionPromptOpen(false)}
+                />
+            )}
             {percentage > 70 && (
                 <div className="fixed inset-0 pointer-events-none overflow-hidden">
                     {/* CSS Confetti could go here */}
@@ -36,7 +58,9 @@ export const QuizResultPage = () => {
             )}
 
             <div className="space-y-2">
-                <h1 className="text-4xl font-bold font-comic text-blue-600">{message}</h1>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold font-comic text-blue-600 text-center px-2">
+                    {message}
+                </h1>
                 <p className="text-gray-500 text-lg">You completed {quiz.title}</p>
                 {submittedToServer ? (
                     <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 inline-block mt-2">

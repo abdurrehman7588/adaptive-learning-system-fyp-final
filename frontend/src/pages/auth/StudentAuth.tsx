@@ -41,7 +41,7 @@ export const StudentAuth = () => {
     ];
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-yellow-300 via-orange-200 to-pink-300 p-4 relative overflow-hidden font-sans">
+        <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-yellow-300 via-orange-200 to-pink-300 p-3 sm:p-4 relative overflow-x-hidden font-sans">
             {/* Animated Background Animals */}
             {animals.map((animal, index) => (
                 <motion.div
@@ -59,7 +59,7 @@ export const StudentAuth = () => {
                         delay: animal.delay,
                         ease: "easeInOut"
                     }}
-                    className="absolute text-6xl pointer-events-none filter drop-shadow-md opacity-60"
+                    className="absolute text-4xl sm:text-6xl pointer-events-none filter drop-shadow-md opacity-60 max-w-[20vw]"
                     style={{ left: `${animal.x}%`, top: `${animal.y}%` }}
                 >
                     {animal.icon}
@@ -84,7 +84,7 @@ export const StudentAuth = () => {
                 transition={{ type: "spring", bounce: 0.5 }}
                 className="w-full max-w-md relative z-10"
             >
-                <Card className="border-4 border-white/50 bg-white/90 backdrop-blur-md p-8 rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(255,100,0,0.3)] relative overflow-hidden">
+                <Card className="border-4 border-white/50 bg-white/90 backdrop-blur-md p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(255,100,0,0.3)] relative overflow-hidden w-full">
                     {/* Header with Mascot */}
                     <div className="text-center mb-8 relative">
                         <motion.div
@@ -94,7 +94,7 @@ export const StudentAuth = () => {
                         >
                             🚀
                         </motion.div>
-                        <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-600 tracking-tight transform -rotate-2">
+                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-600 tracking-tight sm:transform sm:-rotate-2">
                             {isLogin ? 'Welcome Back!' : 'Join the Fun!'}
                         </h2>
                         <p className="text-slate-500 font-medium mt-2">
@@ -187,7 +187,7 @@ export const StudentAuth = () => {
                             whileTap={{ scale: 0.95 }}
                             type="submit"
                             disabled={!isLogin || submitting}
-                            className="w-full bg-gradient-to-r from-orange-400 to-pink-500 text-white font-black text-xl py-4 rounded-2xl shadow-lg shadow-orange-400/30 hover:shadow-xl transition-all border-b-4 border-orange-600 active:border-b-0 active:translate-y-1 relative top-0 disabled:opacity-60"
+                            className="w-full bg-gradient-to-r from-orange-400 to-pink-500 text-white font-black text-lg sm:text-xl py-3.5 sm:py-4 min-h-12 rounded-2xl shadow-lg shadow-orange-400/30 hover:shadow-xl transition-all border-b-4 border-orange-600 active:border-b-0 active:translate-y-1 relative top-0 disabled:opacity-60"
                         >
                             {isLogin
                                 ? submitting

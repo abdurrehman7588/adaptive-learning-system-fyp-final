@@ -9,7 +9,7 @@ export function ParentManageChildren() {
         <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 lg:p-10 max-w-3xl mx-auto space-y-6"
+            className="w-full min-w-0 px-4 py-5 sm:px-6 sm:py-8 lg:px-10 lg:py-10 max-w-3xl mx-auto space-y-6"
         >
             <Link
                 to="/parent/settings"
@@ -31,7 +31,7 @@ export function ParentManageChildren() {
                 </div>
             </div>
 
-            <Card className="p-6 md:p-8">
+            <Card className="p-4 sm:p-6 md:p-8">
                 <ManageChildrenSection variant="settings" />
             </Card>
         </motion.div>

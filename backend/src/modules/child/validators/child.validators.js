@@ -14,7 +14,7 @@ const pinSchema = z
 
 const avatarSchema = z.string().trim().max(500).optional().nullable();
 
-const gradeSchema = z.string().trim().max(50).optional().nullable();
+const gradeSchema = z.string().trim().min(1).max(50);
 
 const ageSchema = z.number().int().min(4).max(12).optional().nullable();
 

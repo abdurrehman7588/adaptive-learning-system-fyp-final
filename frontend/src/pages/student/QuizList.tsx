@@ -8,7 +8,9 @@ import { buildCategoryCatalog } from '../../lib/catalogGrouping';
 import { useActiveLearnerProfile } from '../../hooks/useActiveLearnerProfile';
 import { useStudentGradeScope } from '../../hooks/useStudentGradeScope';
 import { getToken } from '../../lib/tokenStorage';
+import { pageHeading, pageShell, pageSubheading } from '../../lib/responsive';
 import type { Quiz } from '../../types';
+import { cn } from '../../lib/utils';
 import { Loader2, Map } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -67,16 +69,21 @@ export const QuizList = () => {
     const availablePaths = catalogEntries.filter((e) => e.quiz).length;
 
     return (
-        <div className="space-y-8 font-sans pb-10 p-6 md:p-8 max-w-5xl mx-auto">
+        <div className={cn(pageShell, 'space-y-6 sm:space-y-8 font-sans pb-6 sm:pb-10')}>
             <header className="flex flex-col gap-2">
                 <div className="flex items-center gap-2 text-orange-600 font-bold text-sm uppercase tracking-wide">
                     <Map className="w-4 h-4" />
                     Learning paths
                 </div>
-                <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-600 tracking-tight">
+                <h1
+                    className={cn(
+                        pageHeading,
+                        'text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-600',
+                    )}
+                >
                     {learnerFirstName}&apos;s grade adventures
                 </h1>
-                <p className="text-slate-600 font-bold text-lg max-w-xl">
+                <p className={cn(pageSubheading, 'text-slate-600 max-w-xl')}>
                     Pick a subject path for {catalogGradeLabel}. Six fun areas — your level
                     (Easy, Medium, or Hard) shows on each card.
                 </p>
@@ -107,7 +114,9 @@ export const QuizList = () => {
             {!isLoading && !error && availablePaths === 0 && (
                 <div className="text-center py-16 space-y-4">
                     <p className="text-slate-500 font-bold text-lg">
-                        No learning paths for your grade yet.
+                        {gradeLabel
+                            ? `No learning paths for ${gradeLabel} yet.`
+                            : 'No learning paths for your grade yet.'}
                     </p>
                     <Link to="/student/dashboard">
                         <Button variant="outline">Back to dashboard</Button>

@@ -16,7 +16,7 @@ type CategoryLearningCatalogProps = {
 
 export function CategoryLearningCatalog({ entries, gradeLabel }: CategoryLearningCatalogProps) {
     return (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 w-full min-w-0">
             {entries.map((entry, index) => {
                 const theme = getCategoryDef(entry.categoryId).theme;
                 const quiz = entry.quiz;
@@ -34,7 +34,7 @@ export function CategoryLearningCatalog({ entries, gradeLabel }: CategoryLearnin
                     >
                         <Card
                             className={cn(
-                                'relative p-5 h-full flex flex-col border-b-4 transition-shadow hover:shadow-lg',
+                                'relative p-4 sm:p-5 h-full flex flex-col border-b-4 transition-shadow hover:shadow-lg min-w-0',
                                 theme.bg,
                                 theme.border,
                                 !quiz && 'opacity-75',
@@ -56,7 +56,7 @@ export function CategoryLearningCatalog({ entries, gradeLabel }: CategoryLearnin
                                 </div>
                             )}
 
-                            <div className="flex items-start gap-2 mb-3 pr-24">
+                            <div className="flex items-start gap-2 mb-3 pr-20 sm:pr-24">
                                 <div
                                     className={cn(
                                         'w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-inner shrink-0',
@@ -67,7 +67,9 @@ export function CategoryLearningCatalog({ entries, gradeLabel }: CategoryLearnin
                                 </div>
                             </div>
 
-                            <h3 className={cn('text-xl font-black', theme.text)}>{entry.label}</h3>
+                            <h3 className={cn('text-lg sm:text-xl font-black break-words', theme.text)}>
+                                {entry.label}
+                            </h3>
                             <p className="text-sm text-slate-600 font-medium mt-1 mb-4 flex-1">
                                 {entry.description}
                             </p>
@@ -83,7 +85,7 @@ export function CategoryLearningCatalog({ entries, gradeLabel }: CategoryLearnin
                                     <Link to={`/student/quiz/${quiz.id}`}>
                                         <Button
                                             className={cn(
-                                                'w-full font-bold rounded-xl py-5 text-white border-0 bg-gradient-to-r shadow-md',
+                                                'w-full font-bold rounded-xl py-3.5 sm:py-5 min-h-12 text-white border-0 bg-gradient-to-r shadow-md',
                                                 theme.gradient,
                                             )}
                                         >

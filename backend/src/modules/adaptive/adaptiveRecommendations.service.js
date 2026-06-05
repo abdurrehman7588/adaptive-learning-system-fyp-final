@@ -7,6 +7,8 @@ import {
 } from '../../shared/content/taxonomy.js';
 import {
   priorityForCategory,
+  priorityForCategoryAdaptive,
+  recommendationLabelToDifficulty,
   recommendedDifficultyForStatus,
   resolveAdaptiveAction,
 } from './adaptiveRules.js';
@@ -47,6 +49,12 @@ function latestScorePercent(quiz, attemptsByQuiz) {
  *   recommendedDifficulty: import('@prisma/client').DifficultyLevel,
  *   tierMatched: boolean,
  *   fallbackTier: import('@prisma/client').DifficultyLevel | null,
+ *   adaptiveContext?: {
+ *     adaptiveScore: number,
+ *     learnerLevel: string,
+ *     trendDirection: string,
+ *     categoryMastery?: Array<{ category: string, averagePercent: number }>,
+ *   } | null,
  * }} ctx
  */
 function buildRecommendationRow(ctx) {
@@ -59,6 +67,7 @@ function buildRecommendationRow(ctx) {
     recommendedDifficulty,
     tierMatched,
     fallbackTier,
+    adaptiveContext = null,
   } = ctx;
 
   const categoryStatus = categoryRow?.status ?? 'unattempted';
@@ -67,13 +76,23 @@ function buildRecommendationRow(ctx) {
   const { subject, label: subjectLabel } = resolveQuizSubject(quiz);
   const { lastScorePercent, attemptCount } = latestScorePercent(quiz, attemptsByQuiz);
 
+  const categoryMasteryScore =
+    adaptiveContext?.categoryMastery?.find((row) => row.category === categoryKey)
+      ?.averagePercent ?? categoryAverage;
+
   const adaptiveAction = resolveAdaptiveAction({
     lastScorePercent,
     categoryAveragePercent: categoryAverage,
     categoryAttemptCount,
+    adaptiveScore: adaptiveContext?.adaptiveScore,
+    learnerLevel: adaptiveContext?.learnerLevel,
+    trendDirection: adaptiveContext?.trendDirection,
+    categoryMasteryScore,
   });
 
-  let priority = priorityForCategory(categoryStatus, attemptCount);
+  let priority = adaptiveContext
+    ? priorityForCategoryAdaptive(categoryStatus, attemptCount, adaptiveContext.adaptiveScore)
+    : priorityForCategory(categoryStatus, attemptCount);
   let matchType = 'explore';
   let reason = `Explore ${label} to build your learning path.`;
 
@@ -149,13 +168,27 @@ function buildRecommendationRow(ctx) {
 }
 
 /**
- * Tier pilot grades: one recommendation per category, routed by tier.
  * @param {ReturnType<import('./learningProfile.service.js').buildLearningProfile>} learningProfile
  * @param {import('@prisma/client').Quiz[]} quizzes
  * @param {import('@prisma/client').QuizAttempt[]} attempts
- * @param {import('@prisma/client').GradeLevel} gradeLevel
+ * @param {{
+ *   recommendation: 'Easy' | 'Medium' | 'Hard',
+ *   confidence: number,
+ *   source?: string,
+ *   adaptiveProfile?: {
+ *     adaptiveScore: number,
+ *     learnerLevel: string,
+ *     features?: { trendDirection?: string, categoryMastery?: Array<{ category: string, averagePercent: number }> },
+ *   } | null,
+ * } | null} [tierPrediction]
  */
-function buildTierRoutedRecommendations(learningProfile, quizzes, attempts, gradeLevel) {
+function buildTierRoutedRecommendations(
+  learningProfile,
+  quizzes,
+  attempts,
+  gradeLevel,
+  tierPrediction = null,
+) {
   const completed = attempts.filter((row) => row.status === 'completed');
   const attemptsByQuiz = new Map();
   for (const attempt of completed) {
@@ -171,10 +204,32 @@ function buildTierRoutedRecommendations(learningProfile, quizzes, attempts, grad
   const categories = listRecommendationCategories(quizzes, gradeLevel);
   const recommendations = [];
 
+  const globalDifficulty = tierPrediction
+    ? recommendationLabelToDifficulty(tierPrediction.recommendation)
+    : learningProfile.adaptiveProfile?.recommendedDifficulty ?? null;
+
+  const adaptiveContext = tierPrediction?.adaptiveProfile
+    ? {
+        adaptiveScore: tierPrediction.adaptiveProfile.adaptiveScore,
+        learnerLevel: tierPrediction.adaptiveProfile.learnerLevel,
+        trendDirection:
+          tierPrediction.adaptiveProfile.features?.trendDirection ?? 'insufficient_data',
+        categoryMastery: tierPrediction.adaptiveProfile.features?.categoryMastery ?? [],
+      }
+    : learningProfile.adaptiveProfile
+      ? {
+          adaptiveScore: learningProfile.adaptiveProfile.adaptiveScore,
+          learnerLevel: learningProfile.adaptiveProfile.learnerLevel,
+          trendDirection: 'insufficient_data',
+          categoryMastery: [],
+        }
+      : null;
+
   for (const categoryKey of categories) {
     const categoryRow = profileByCategory.get(categoryKey);
     const categoryStatus = categoryRow?.status ?? 'unattempted';
-    const recommendedDifficulty = recommendedDifficultyForStatus(categoryStatus);
+    const recommendedDifficulty =
+      globalDifficulty ?? recommendedDifficultyForStatus(categoryStatus);
     const { quiz, tierMatched, fallbackTier } = selectQuizForAdaptiveTier(
       quizzes,
       categoryKey,
@@ -195,6 +250,7 @@ function buildTierRoutedRecommendations(learningProfile, quizzes, attempts, grad
         recommendedDifficulty,
         tierMatched,
         fallbackTier,
+        adaptiveContext,
       }),
     );
   }
@@ -206,8 +262,19 @@ function buildTierRoutedRecommendations(learningProfile, quizzes, attempts, grad
  * @param {ReturnType<import('./learningProfile.service.js').buildLearningProfile>} learningProfile
  * @param {import('@prisma/client').Quiz[]} quizzes
  * @param {import('@prisma/client').QuizAttempt[]} attempts
+ * @param {{
+ *   recommendation: 'Easy' | 'Medium' | 'Hard',
+ *   confidence: number,
+ *   source?: string,
+ *   adaptiveProfile?: object | null,
+ * } | null} [tierPrediction]
  */
-export function buildAdaptiveRecommendations(learningProfile, quizzes, attempts) {
+export function buildAdaptiveRecommendations(
+  learningProfile,
+  quizzes,
+  attempts,
+  tierPrediction = null,
+) {
   const gradeLevel = quizzes[0]?.gradeLevel ?? null;
 
   if (isTierPilotGrade(gradeLevel)) {
@@ -216,6 +283,7 @@ export function buildAdaptiveRecommendations(learningProfile, quizzes, attempts)
       quizzes,
       attempts,
       gradeLevel,
+      tierPrediction,
     );
     return sortRecommendations(recommendations);
   }
@@ -233,6 +301,27 @@ export function buildAdaptiveRecommendations(learningProfile, quizzes, attempts)
     learningProfile.categories.map((row) => [row.category, row]),
   );
 
+  const globalDifficulty = tierPrediction
+    ? recommendationLabelToDifficulty(tierPrediction.recommendation)
+    : learningProfile.adaptiveProfile?.recommendedDifficulty ?? null;
+
+  const adaptiveContext = tierPrediction?.adaptiveProfile
+    ? {
+        adaptiveScore: tierPrediction.adaptiveProfile.adaptiveScore,
+        learnerLevel: tierPrediction.adaptiveProfile.learnerLevel,
+        trendDirection:
+          tierPrediction.adaptiveProfile.features?.trendDirection ?? 'insufficient_data',
+        categoryMastery: tierPrediction.adaptiveProfile.features?.categoryMastery ?? [],
+      }
+    : learningProfile.adaptiveProfile
+      ? {
+          adaptiveScore: learningProfile.adaptiveProfile.adaptiveScore,
+          learnerLevel: learningProfile.adaptiveProfile.learnerLevel,
+          trendDirection: 'insufficient_data',
+          categoryMastery: [],
+        }
+      : null;
+
   const recommendations = [];
 
   for (const quiz of quizzes) {
@@ -241,6 +330,7 @@ export function buildAdaptiveRecommendations(learningProfile, quizzes, attempts)
     const categoryRow = profileByCategory.get(categoryKey);
     const categoryStatus = categoryRow?.status ?? 'unattempted';
     const recommendedDifficulty =
+      globalDifficulty ??
       categoryRow?.recommendedDifficulty ??
       recommendedDifficultyForStatus(categoryStatus);
 
@@ -255,6 +345,7 @@ export function buildAdaptiveRecommendations(learningProfile, quizzes, attempts)
         tierMatched: quiz.difficultyLevel === recommendedDifficulty,
         fallbackTier:
           quiz.difficultyLevel === recommendedDifficulty ? null : quiz.difficultyLevel,
+        adaptiveContext,
       }),
     );
   }
@@ -284,6 +375,8 @@ function sortRecommendations(recommendations) {
  * @param {ReturnType<typeof buildAdaptiveRecommendations>} recommendations
  */
 export function buildAdaptiveInsights(learningProfile, recommendations) {
+  const nextPath = learningProfile.adaptiveProfile?.nextLearningPath ?? null;
+
   const focusArea = learningProfile.weakest
     ? {
         category: learningProfile.weakest.category,
@@ -302,7 +395,16 @@ export function buildAdaptiveInsights(learningProfile, recommendations) {
       }
     : null;
 
+  const pathAligned =
+    nextPath &&
+    recommendations.find(
+      (row) =>
+        row.category === nextPath.focusCategory &&
+        (row.adaptiveAction === 'practice' || row.adaptiveAction === 'explore'),
+    );
+
   const top =
+    pathAligned ??
     recommendations.find((row) => row.priority === 'high') ??
     recommendations.find((row) => row.priority === 'medium') ??
     recommendations[0] ??
@@ -328,5 +430,8 @@ export function buildAdaptiveInsights(learningProfile, recommendations) {
     suggestedNextActivity: whatsNext,
     weakestCategory: focusArea,
     strongestCategory: strongestArea,
+    nextLearningPath: nextPath,
+    adaptiveScore: learningProfile.adaptiveProfile?.adaptiveScore ?? null,
+    learnerLevel: learningProfile.adaptiveProfile?.learnerLevel ?? null,
   };
 }

@@ -19,8 +19,16 @@ export type CategoryCatalogEntry = {
 
 const PRIORITY_RANK = { high: 0, medium: 1, low: 2 } as const;
 
+function resolveQuizCategory(quiz: Quiz): LearningCategoryId | null {
+    return (
+        normalizeLearningCategory(quiz.category) ??
+        normalizeLearningCategory(quiz.type) ??
+        null
+    );
+}
+
 function pickQuizForCategory(quizzes: Quiz[], categoryId: LearningCategoryId): Quiz | null {
-    const matches = quizzes.filter((q) => q.category === categoryId);
+    const matches = quizzes.filter((q) => resolveQuizCategory(q) === categoryId);
     return matches[0] ?? null;
 }
 
@@ -45,7 +53,7 @@ export function buildCategoryCatalog(
     );
 
     return LEARNING_CATEGORIES.map((def) => {
-        const categoryQuizzes = quizzes.filter((q) => q.category === def.id);
+        const categoryQuizzes = quizzes.filter((q) => resolveQuizCategory(q) === def.id);
         let quiz = pickQuizForCategory(quizzes, def.id);
 
         const recInCategory = categoryQuizzes

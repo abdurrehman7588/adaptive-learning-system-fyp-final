@@ -23,6 +23,21 @@ const ROUTE_SLUG_BY_DIMENSION = Object.fromEntries(
  * @param {import('@prisma/client').EmotionalAssessment | null} assessment
  * @param {Array<{ payload: unknown }>} [feelingsCompletions]
  */
+const EI_SCHEMA_UNAVAILABLE_MESSAGE =
+  'Emotional intelligence data is not available on this server yet. Database migrations are pending.';
+
+/** Profile payload when EI tables are missing (avoids 500s on read paths). */
+export function toUnavailableProfileDto(
+  message = EI_SCHEMA_UNAVAILABLE_MESSAGE,
+) {
+  const base = toProfileDto(null, []);
+  return {
+    ...base,
+    schemaStatus: 'unavailable',
+    schemaMessage: message,
+  };
+}
+
 export function toProfileDto(assessment, feelingsCompletions = []) {
   const recommendedSlug = resolveRecommendedSlug(assessment);
   const activities = buildActivitiesList(recommendedSlug);
@@ -30,6 +45,7 @@ export function toProfileDto(assessment, feelingsCompletions = []) {
 
   if (!assessment) {
     return {
+      schemaStatus: 'ready',
       hasAssessment: false,
       questionnaire: buildQuestionnaireDto(),
       categories: null,
@@ -56,6 +72,7 @@ export function toProfileDto(assessment, feelingsCompletions = []) {
   const { strongest, weakest } = strongestWeakest(percents);
 
   return {
+    schemaStatus: 'ready',
     hasAssessment: true,
     questionnaire: buildQuestionnaireDto(),
     categories: buildCategoriesDto(assessment, percents),

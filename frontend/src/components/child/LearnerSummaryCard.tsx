@@ -24,7 +24,7 @@ export function LearnerSummaryCard({
 
     return (
         <div
-            className={`flex items-center gap-4 rounded-2xl border p-4 transition-colors ${
+            className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 rounded-2xl border p-4 transition-colors min-w-0 ${
                 isActive ? 'border-teal-300 bg-teal-50/60' : 'border-slate-200 bg-white'
             }`}
         >
@@ -59,11 +59,11 @@ export function LearnerSummaryCard({
                 </p>
             </div>
 
-            <div className="flex shrink-0 gap-1">
+            <div className="flex shrink-0 gap-1 self-end sm:self-center">
                 <button
                     type="button"
                     onClick={onEdit}
-                    className="p-2 rounded-lg text-slate-600 hover:bg-teal-50 hover:text-teal-700"
+                    className="p-2.5 min-h-11 min-w-11 rounded-lg text-slate-600 hover:bg-teal-50 hover:text-teal-700"
                     aria-label={`Edit ${child.name}`}
                 >
                     <Pencil className="w-4 h-4" />
@@ -71,7 +71,7 @@ export function LearnerSummaryCard({
                 <button
                     type="button"
                     onClick={onRemove}
-                    className="p-2 rounded-lg text-red-500 hover:bg-red-50"
+                    className="p-2.5 min-h-11 min-w-11 rounded-lg text-red-500 hover:bg-red-50"
                     aria-label={`Remove ${child.name}`}
                 >
                     <Trash2 className="w-4 h-4" />

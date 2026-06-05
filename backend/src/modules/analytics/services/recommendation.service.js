@@ -2,6 +2,7 @@ import {
   buildAdaptiveInsights,
   buildAdaptiveRecommendations,
 } from '../../adaptive/adaptiveRecommendations.service.js';
+import { buildAdaptiveProfileFromAttempts } from '../../adaptive/adaptiveScore.service.js';
 import { buildLearningProfile } from '../../adaptive/learningProfile.service.js';
 import { isAdaptiveGrade } from '../../adaptive/adaptiveRules.js';
 import {
@@ -14,6 +15,42 @@ import { buildChildAnalytics } from './childAnalytics.service.js';
 const WEAK_SUBJECT_THRESHOLD = 70;
 const WEAK_QUIZ_THRESHOLD = 60;
 const STRONG_SUBJECT_THRESHOLD = 80;
+
+/**
+ * Ensure every recommendations bundle carries hybrid adaptive metadata.
+ *
+ * @param {import('@prisma/client').QuizAttempt[]} attempts
+ * @param {object | null | undefined} tierPrediction
+ */
+function resolveEffectiveTierPrediction(attempts, tierPrediction) {
+  if (tierPrediction?.adaptiveProfile) {
+    return tierPrediction;
+  }
+
+  if (tierPrediction) {
+    const adaptiveOnly = buildAdaptiveProfileFromAttempts(attempts, null, {
+      recommendation: tierPrediction.recommendation,
+      confidence: tierPrediction.confidence,
+      source: tierPrediction.source ?? 'model',
+    });
+    return {
+      ...tierPrediction,
+      adaptiveProfile: adaptiveOnly,
+      features: tierPrediction.features ?? adaptiveOnly.features,
+    };
+  }
+
+  if (attempts.length === 0) return null;
+
+  const adaptiveOnly = buildAdaptiveProfileFromAttempts(attempts, null, null);
+  return {
+    recommendation: adaptiveOnly.recommendation,
+    confidence: adaptiveOnly.confidence,
+    source: adaptiveOnly.source,
+    features: adaptiveOnly.features,
+    adaptiveProfile: adaptiveOnly,
+  };
+}
 
 /**
  * @param {import('@prisma/client').Quiz[]} quizzes
@@ -282,11 +319,19 @@ function buildRecommendations(quizzes, attempts, analytics) {
  *   attempts: import('@prisma/client').QuizAttempt[],
  * }} child
  * @param {import('@prisma/client').Quiz[]} quizzes
+ * @param {{
+ *   tierPrediction?: {
+ *     recommendation: 'Easy' | 'Medium' | 'Hard',
+ *     confidence: number,
+ *     source?: string,
+ *   } | null,
+ * }} [options]
  */
-export function buildChildRecommendations(child, quizzes) {
+export function buildChildRecommendations(child, quizzes, options = {}) {
   const analytics = buildChildAnalytics(child.attempts);
   const gradeLevel = child.gradeLevel ?? null;
-  const learningProfile = buildLearningProfile(child.attempts, gradeLevel);
+  const tierPrediction = resolveEffectiveTierPrediction(child.attempts, options.tierPrediction);
+  const learningProfile = buildLearningProfile(child.attempts, gradeLevel, tierPrediction);
 
   const subjectProfile = {
     overallAverage: analytics.summary.averageScorePercent,
@@ -301,7 +346,7 @@ export function buildChildRecommendations(child, quizzes) {
   const conceptProfile = buildConceptProfile(analytics, child.attempts);
 
   const recommendations = isAdaptiveGrade(gradeLevel)
-    ? buildAdaptiveRecommendations(learningProfile, quizzes, child.attempts)
+    ? buildAdaptiveRecommendations(learningProfile, quizzes, child.attempts, tierPrediction)
     : buildRecommendations(quizzes, child.attempts, analytics);
 
   const adaptiveInsights = learningProfile.adaptiveEnabled

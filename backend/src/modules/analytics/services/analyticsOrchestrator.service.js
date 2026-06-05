@@ -19,11 +19,13 @@ export class AnalyticsOrchestratorService {
    * @param {{
    *   attemptAnalyticsRepository: import('../repositories/attemptAnalytics.repository.js').AttemptAnalyticsRepository,
    *   childQueryPort: import('../../../shared/ports/childQuery.port.js').ChildQueryPort,
+   *   recommendationPredictionService?: import('../../ai/services/recommendationPrediction.service.js').RecommendationPredictionService | null,
    * }} deps
    */
   constructor(deps) {
     this.repository = deps.attemptAnalyticsRepository;
     this.childQueryPort = deps.childQueryPort;
+    this.recommendationPredictionService = deps.recommendationPredictionService ?? null;
   }
 
   async assertParentOwnsChild(parentId, childId) {
@@ -99,6 +101,7 @@ export class AnalyticsOrchestratorService {
         const attempts = await this.repository.findAttemptsForChild(child.id);
         const childGrade = await loadChildGradeEnumForId(this.childQueryPort, child.id);
         const quizzes = filterQuizzesForChildGrade(allQuizzes, childGrade);
+        const tierPrediction = await this.#resolveTierPrediction(child.id, attempts);
         const bundle = buildChildRecommendations(
           {
             id: child.id,
@@ -107,6 +110,7 @@ export class AnalyticsOrchestratorService {
             attempts,
           },
           quizzes,
+          { tierPrediction },
         );
         bundle.recommendations = assertItemsMatchChildGrade(
           bundle.recommendations,
@@ -136,6 +140,8 @@ export class AnalyticsOrchestratorService {
     );
     const quizzes = filterQuizzesForChildGrade(allQuizzes, childGrade);
 
+    const tierPrediction = await this.#resolveTierPrediction(effectiveChildId, attempts);
+
     const bundle = buildChildRecommendations(
       {
         id: childSummary.id,
@@ -144,6 +150,7 @@ export class AnalyticsOrchestratorService {
         attempts,
       },
       quizzes,
+      { tierPrediction },
     );
 
     bundle.recommendations = assertItemsMatchChildGrade(
@@ -171,6 +178,23 @@ export class AnalyticsOrchestratorService {
       conceptProfile: bundle.conceptProfile,
       recommendations: bundle.recommendations,
     };
+  }
+
+  /**
+   * @param {number} childId
+   * @param {import('@prisma/client').QuizAttempt[]} attempts
+   */
+  async #resolveTierPrediction(childId, attempts) {
+    if (!this.recommendationPredictionService) return null;
+    try {
+      return await this.recommendationPredictionService.predictForChild(childId, attempts);
+    } catch (error) {
+      logger.warn('[ml-recommendation] tier prediction failed in analytics bundle', {
+        childId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
   }
 
   /**

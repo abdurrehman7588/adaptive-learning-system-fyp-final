@@ -11,6 +11,8 @@ import {
 import { resolveActiveChildId } from '../../lib/activeChild';
 import { getToken } from '../../lib/tokenStorage';
 import { useActiveLearnerProfile } from '../../hooks/useActiveLearnerProfile';
+import { pageHeading, pageShell } from '../../lib/responsive';
+import { cn } from '../../lib/utils';
 
 export const StudentRewards = () => {
     const { learnerFirstName } = useActiveLearnerProfile();
@@ -48,12 +50,17 @@ export const StudentRewards = () => {
 
     return (
         <motion.div
-            className="space-y-8 font-sans pb-12 p-6 md:p-8"
+            className={cn(pageShell, 'space-y-6 sm:space-y-8 font-sans pb-10 sm:pb-12')}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
         >
             <header className="text-center md:text-left">
-                <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 tracking-tight">
+                <h1
+                    className={cn(
+                        pageHeading,
+                        'md:text-5xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500',
+                    )}
+                >
                     Rewards &amp; Streaks 🏆
                 </h1>
                 <p className="text-slate-500 font-bold mt-3 text-lg md:text-xl">

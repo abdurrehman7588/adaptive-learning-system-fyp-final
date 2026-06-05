@@ -226,6 +226,7 @@ export const QuizPlayer = () => {
                         result,
                         quiz,
                         submittedToServer: true,
+                        serverAttemptId: attempt.id,
                         gradedByQuestionId: mapGradedAnswersByQuestionId(attempt.answers),
                     },
                     replace: true,
@@ -327,7 +328,7 @@ export const QuizPlayer = () => {
     };
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 py-4 px-4 md:px-0 relative text-slate-900">
+        <div className="w-full min-w-0 max-w-2xl mx-auto space-y-4 sm:space-y-6 py-4 px-4 sm:px-6 md:px-8 relative text-slate-900">
             {isSubmitting && (
                 <motion.div
                     className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm"
@@ -356,11 +357,11 @@ export const QuizPlayer = () => {
                 </p>
             )}
 
-            <motion.div className="flex items-center justify-between text-slate-600 font-semibold text-sm">
-                <span>
+            <motion.div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-slate-600 font-semibold text-sm min-w-0">
+                <span className="shrink-0">
                     Question {currentQuestionIdx + 1}/{quiz.questions.length}
                 </span>
-                <span className="text-slate-800">{quiz.title}</span>
+                <span className="text-slate-800 truncate">{quiz.title}</span>
             </motion.div>
             <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
                 <div
@@ -371,7 +372,7 @@ export const QuizPlayer = () => {
                 />
             </div>
 
-            <Card className="p-6 md:p-8 min-h-[400px] flex flex-col justify-between bg-white shadow-md border-slate-200">
+            <Card className="p-4 sm:p-6 md:p-8 min-h-[min(400px,70dvh)] flex flex-col justify-between bg-white shadow-md border-slate-200">
                 <div>
                     <motion.div className="flex items-center justify-between gap-3 mb-6">
                         <span className="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1.5 rounded-full">
@@ -379,7 +380,7 @@ export const QuizPlayer = () => {
                             {questionElapsed}s on this question
                         </span>
                     </motion.div>
-                    <h2 className="text-2xl md:text-3xl font-bold mb-8 leading-relaxed text-slate-900">
+                    <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8 leading-relaxed text-slate-900 break-words">
                         {currentQuestion.text}
                     </h2>
 
@@ -390,14 +391,16 @@ export const QuizPlayer = () => {
                                 type="button"
                                 onClick={() => setSelectedOption(idx)}
                                 disabled={isSubmitting}
-                                className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center justify-between
+                                className={`w-full min-h-12 p-3.5 sm:p-4 text-left rounded-xl border-2 transition-all flex items-center justify-between gap-3
                              ${
                                  selectedOption === idx
                                      ? 'border-blue-600 bg-blue-50 text-blue-900 shadow-sm'
                                      : 'border-slate-300 bg-white text-slate-800 hover:border-blue-400 hover:bg-blue-50/50'
                              }`}
                             >
-                                <span className="font-semibold text-lg">{option}</span>
+                                <span className="font-semibold text-base sm:text-lg break-words min-w-0">
+                                    {option}
+                                </span>
                                 {selectedOption === idx && (
                                     <CheckCircle className="w-6 h-6 text-blue-600 shrink-0" />
                                 )}

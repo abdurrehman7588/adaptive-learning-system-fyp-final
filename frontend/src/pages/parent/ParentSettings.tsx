@@ -137,7 +137,7 @@ export const ParentSettings = () => {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 lg:p-10 space-y-8 max-w-5xl mx-auto"
+            className="w-full min-w-0 px-4 py-5 sm:px-6 sm:py-8 lg:px-10 lg:py-10 space-y-6 sm:space-y-8 max-w-5xl mx-auto"
         >
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>

@@ -16,6 +16,7 @@ export type GradeLevelEnum = (typeof GRADE_ENUMS)[number];
 
 const DISPLAY_TO_ENUM: Record<string, GradeLevelEnum> = {
     'pre-k': 'pre_k',
+    'pre k': 'pre_k',
     prek: 'pre_k',
     pre_k: 'pre_k',
     kindergarten: 'kindergarten',
@@ -43,8 +44,12 @@ export function normalizeGradeEnum(raw?: string | null): GradeLevelEnum | null {
     return DISPLAY_TO_ENUM[key] ?? null;
 }
 
+/**
+ * Client-side safety net. Student quiz APIs are already scoped by JWT + DB grade;
+ * when grade is unknown, keep the server payload instead of hiding everything.
+ */
 export function filterQuizzesByGrade(quizzes: Quiz[], grade: GradeLevelEnum | null): Quiz[] {
-    if (!grade) return [];
+    if (!grade) return quizzes;
     return quizzes.filter((quiz) => normalizeGradeEnum(quiz.grade) === grade);
 }
 
@@ -52,7 +57,7 @@ export function filterRecommendationsByGrade(
     recommendations: RecommendedQuiz[],
     grade: GradeLevelEnum | null,
 ): RecommendedQuiz[] {
-    if (!grade) return [];
+    if (!grade) return recommendations;
     return recommendations.filter(
         (rec) => normalizeGradeEnum(rec.gradeLevel ?? null) === grade,
     );

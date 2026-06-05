@@ -83,7 +83,7 @@ export const StudentProfile = () => {
         <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-2xl mx-auto space-y-6 font-sans pb-10 p-6 md:p-8"
+            className="w-full min-w-0 max-w-2xl mx-auto space-y-6 font-sans pb-10 px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-8"
         >
             <header className="text-center">
                 <h1 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-cyan-500">
