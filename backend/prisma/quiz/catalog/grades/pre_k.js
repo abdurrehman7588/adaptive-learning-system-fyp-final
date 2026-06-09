@@ -1,4 +1,5 @@
 import { buildQuiz } from '../utils.js';
+import { PRE_K_TIER_QUIZZES } from './pre_k_tier_quizzes.js';
 
 const G = 'pre_k';
 
@@ -7,7 +8,8 @@ export const PRE_K_CATALOG = [
   buildQuiz({
     gradeLevel: G,
     category: 'math',
-    title: 'Pre-K Math: Count & Compare',
+    difficultyLevel: 'easy',
+    title: 'Pre-K Math Easy: Count & Compare',
     description: 'Count objects and compare which group has more.',
     questions: [
       { text: 'How many apples? 🍎🍎🍎', options: ['3', '2', '4', '5'], correctIndex: 0, topic: 'Counting to 5' },
@@ -88,4 +90,5 @@ export const PRE_K_CATALOG = [
       { text: 'Ice cream melts in heat because it gets ___', options: ['warm', 'colder', 'heavier', 'square'], correctIndex: 0, topic: 'Why things change' },
     ],
   }),
+  ...PRE_K_TIER_QUIZZES,
 ];

@@ -331,7 +331,18 @@ export function buildChildRecommendations(child, quizzes, options = {}) {
   const analytics = buildChildAnalytics(child.attempts);
   const gradeLevel = child.gradeLevel ?? null;
   const tierPrediction = resolveEffectiveTierPrediction(child.attempts, options.tierPrediction);
-  const learningProfile = buildLearningProfile(child.attempts, gradeLevel, tierPrediction);
+  const tierPredictionWithSignal = tierPrediction
+    ? {
+        ...tierPrediction,
+        emotionalSignal:
+          options.tierPrediction?.emotionalSignal ?? tierPrediction.emotionalSignal ?? null,
+      }
+    : null;
+  const learningProfile = buildLearningProfile(
+    child.attempts,
+    gradeLevel,
+    tierPredictionWithSignal,
+  );
 
   const subjectProfile = {
     overallAverage: analytics.summary.averageScorePercent,

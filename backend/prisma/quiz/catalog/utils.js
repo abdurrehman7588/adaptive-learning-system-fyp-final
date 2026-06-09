@@ -22,8 +22,19 @@ export const GRADE_2_QUIZZES_PER_CATEGORY = 3;
 export const KINDERGARTEN_TIER_PILOT_CATEGORIES = [...FROZEN_CATEGORIES];
 export const KINDERGARTEN_QUIZZES_PER_CATEGORY = 3;
 
-/** Grades with easy / medium / hard per frozen category. */
-export const TIER_PILOT_GRADE_LEVELS = ['kindergarten', 'grade_2'];
+export const ALL_GRADE_LEVELS = [
+  'pre_k',
+  'kindergarten',
+  'grade_1',
+  'grade_2',
+  'grade_3',
+  'grade_4',
+  'grade_5',
+  'grade_6',
+];
+
+/** All grades use easy / medium / hard per frozen category. */
+export const TIER_PILOT_GRADE_LEVELS = [...ALL_GRADE_LEVELS];
 
 /**
  * @param {import('@prisma/client').GradeLevel | string | null | undefined} gradeLevel
@@ -35,20 +46,9 @@ export function isTierPilotGrade(gradeLevel) {
 /**
  * @param {import('@prisma/client').GradeLevel | string | null | undefined} gradeLevel
  */
-export function quizzesPerCategoryForGrade(gradeLevel) {
-  return isTierPilotGrade(gradeLevel) ? GRADE_2_QUIZZES_PER_CATEGORY : 1;
+export function quizzesPerCategoryForGrade(_gradeLevel) {
+  return GRADE_2_QUIZZES_PER_CATEGORY;
 }
-
-export const ALL_GRADE_LEVELS = [
-  'pre_k',
-  'kindergarten',
-  'grade_1',
-  'grade_2',
-  'grade_3',
-  'grade_4',
-  'grade_5',
-  'grade_6',
-];
 
 /**
  * @param {import('@prisma/client').GradeLevel} gradeLevel
@@ -96,6 +96,7 @@ export function buildQuiz({
     gradeLevel,
     difficultyLevel: difficulty,
     timeLimitMinutes: timeLimitMinutes ?? Math.max(8, Math.min(20, questions.length * 2)),
+    isPublished: true,
     questions,
   };
 }

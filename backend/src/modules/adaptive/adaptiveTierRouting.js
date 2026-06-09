@@ -3,6 +3,7 @@ import {
   isTierPilotGrade,
 } from '../../../prisma/quiz/catalog/utils.js';
 import { normalizeLearningCategory } from '../../shared/content/taxonomy.js';
+import { resolveCategoryRecommendedDifficulty } from './adaptiveRules.js';
 
 export { FROZEN_CATEGORIES as GRADE_2_TIER_PILOT_CATEGORIES, isTierPilotGrade };
 
@@ -70,9 +71,23 @@ function pickWithFallback(target, cellQuizzes) {
 }
 
 /**
+ * Resolve per-category difficulty for tier routing (never the global ML tier).
+ *
+ * @param {{
+ *   recommendedDifficulty?: import('@prisma/client').DifficultyLevel | null,
+ *   status?: string,
+ *   averagePercent?: number | null,
+ *   attemptCount?: number,
+ * }} categoryRow
+ */
+export function resolveTierRoutingDifficulty(categoryRow) {
+  return resolveCategoryRecommendedDifficulty(categoryRow);
+}
+
+/**
  * @param {import('@prisma/client').Quiz[]} quizzes Grade-filtered catalog
  * @param {string} categoryKey Normalized learning category
- * @param {import('@prisma/client').DifficultyLevel} recommendedDifficulty
+ * @param {import('@prisma/client').DifficultyLevel} recommendedDifficulty Category-specific tier
  * @param {import('@prisma/client').GradeLevel | string | null | undefined} gradeLevel
  */
 export function selectQuizForAdaptiveTier(

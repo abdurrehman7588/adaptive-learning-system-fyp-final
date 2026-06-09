@@ -1,4 +1,5 @@
 import { buildQuiz } from '../utils.js';
+import { GRADE_6_TIER_QUIZZES } from './grade_6_tier_quizzes.js';
 
 const G = 'grade_6';
 
@@ -88,4 +89,5 @@ export const GRADE_6_CATALOG = [
       { text: 'If P→Q and P true, Q is ___', options: ['true', 'false', 'unknown always', 'random'], correctIndex: 0, topic: 'Logic' },
     ],
   }),
+  ...GRADE_6_TIER_QUIZZES,
 ];

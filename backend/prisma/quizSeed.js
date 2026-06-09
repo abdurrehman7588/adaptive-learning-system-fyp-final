@@ -1,5 +1,7 @@
-import { FULL_CATALOG } from './quiz/pilotCatalog.js';
+import { FULL_CATALOG, FULL_GRADE_CATALOG } from './quiz/catalog/index.js';
 import { upsertCatalogQuiz } from './quiz/upsertQuiz.js';
+
+export { FULL_CATALOG, FULL_GRADE_CATALOG };
 
 /** Superseded slugs (legacy demos + pre-expansion pilot naming). */
 const RETIRED_QUIZ_SLUGS = [
@@ -33,12 +35,40 @@ const RETIRED_QUIZ_SLUGS = [
 ];
 
 /**
- * Idempotent published quizzes — full Pre-K–Grade 6 grid (48 quizzes).
+ * Idempotent published quizzes — full Pre-K–Grade 6 tier grid (144 quizzes).
  * @param {import('@prisma/client').PrismaClient} prisma
  */
 export async function seedQuizzes(prisma) {
-  for (const spec of FULL_CATALOG) {
-    await upsertCatalogQuiz(prisma, spec);
+  const catalogSlugs = FULL_GRADE_CATALOG.map((spec) => spec.slug);
+  const existingRows = await prisma.quiz.findMany({ select: { slug: true } });
+  const existingSlugs = new Set(existingRows.map((row) => row.slug));
+
+  const missingSpecs = FULL_GRADE_CATALOG.filter((spec) => !existingSlugs.has(spec.slug));
+  const refreshSpecs = FULL_GRADE_CATALOG.filter((spec) => existingSlugs.has(spec.slug));
+  const forceRefresh = process.env.SEED_REFRESH_CATALOG === '1';
+
+  if (missingSpecs.length > 0) {
+    console.log(`Seeding ${missingSpecs.length} missing catalog quiz(zes)…`);
+    for (let i = 0; i < missingSpecs.length; i += 1) {
+      const spec = missingSpecs[i];
+      await upsertCatalogQuiz(prisma, { ...spec, isPublished: true });
+      if ((i + 1) % 12 === 0 || i + 1 === missingSpecs.length) {
+        console.log(`  missing: ${i + 1}/${missingSpecs.length}`);
+      }
+    }
+  } else {
+    console.log('No missing catalog quizzes — catalog slugs already present.');
+  }
+
+  if (forceRefresh && refreshSpecs.length > 0) {
+    console.log(`Refreshing ${refreshSpecs.length} existing catalog quiz(zes)…`);
+    for (let i = 0; i < refreshSpecs.length; i += 1) {
+      const spec = refreshSpecs[i];
+      await upsertCatalogQuiz(prisma, { ...spec, isPublished: true });
+      if ((i + 1) % 24 === 0 || i + 1 === refreshSpecs.length) {
+        console.log(`  refresh: ${i + 1}/${refreshSpecs.length}`);
+      }
+    }
   }
 
   const removed = await prisma.quiz.deleteMany({
@@ -48,6 +78,33 @@ export async function seedQuizzes(prisma) {
     console.log(`Removed ${removed.count} retired quiz(zes)`);
   }
 
+  await prisma.quiz.updateMany({
+    where: { slug: { in: catalogSlugs } },
+    data: { isPublished: true },
+  });
+
+  const unpublishedOrphans = await prisma.quiz.updateMany({
+    where: { slug: { notIn: catalogSlugs } },
+    data: { isPublished: false },
+  });
+  if (unpublishedOrphans.count > 0) {
+    console.log(`Unpublished ${unpublishedOrphans.count} non-catalog quiz(zes)`);
+  }
+
+  const expected = FULL_GRADE_CATALOG.length;
   const count = await prisma.quiz.count({ where: { isPublished: true } });
+
+  if (count !== expected) {
+    const publishedRows = await prisma.quiz.findMany({
+      where: { isPublished: true },
+      select: { slug: true },
+    });
+    const publishedSlugs = new Set(publishedRows.map((row) => row.slug));
+    const missing = catalogSlugs.filter((slug) => !publishedSlugs.has(slug));
+    throw new Error(
+      `Catalog seed incomplete: ${count}/${expected} published. Missing slugs: ${missing.slice(0, 10).join(', ')}${missing.length > 10 ? '…' : ''}`,
+    );
+  }
+
   console.log(`Quiz catalog ready: ${count} published quiz(zes)`);
 }

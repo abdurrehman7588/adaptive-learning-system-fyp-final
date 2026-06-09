@@ -27,6 +27,9 @@ export const FULL_GRADE_CATALOG = [
   ...GRADE_6_CATALOG,
 ];
 
+/** Alias used by seed + diagnostics — same array reference as FULL_GRADE_CATALOG. */
+export const FULL_CATALOG = FULL_GRADE_CATALOG;
+
 const MIN_QUESTIONS = 5;
 const MAX_QUESTIONS = 10;
 const QUIZZES_PER_GRADE = FROZEN_CATEGORIES.length;
@@ -55,11 +58,8 @@ export function validateCatalog(catalog) {
     }
   }
 
-  const tierPilotExtras =
-    TIER_PILOT_GRADE_LEVELS.length *
-    FROZEN_CATEGORIES.length *
-    (GRADE_2_QUIZZES_PER_CATEGORY - 1);
-  const expectedTotal = ALL_GRADE_LEVELS.length * QUIZZES_PER_GRADE + tierPilotExtras;
+  const expectedTotal =
+    ALL_GRADE_LEVELS.length * FROZEN_CATEGORIES.length * GRADE_2_QUIZZES_PER_CATEGORY;
 
   for (const grade of ALL_GRADE_LEVELS) {
     const gradeQuizzes = catalog.filter((q) => q.gradeLevel === grade);
@@ -82,14 +82,12 @@ export function validateCatalog(catalog) {
         );
       }
 
-      if (isTierPilotGrade(grade)) {
-        for (const tier of ['easy', 'medium', 'hard']) {
-          const tierCount = match.filter((q) => q.difficultyLevel === tier).length;
-          if (tierCount !== 1) {
-            errors.push(
-              `${grade}/${category}/${tier}: expected 1 quiz, got ${tierCount}`,
-            );
-          }
+      for (const tier of ['easy', 'medium', 'hard']) {
+        const tierCount = match.filter((q) => q.difficultyLevel === tier).length;
+        if (tierCount !== 1) {
+          errors.push(
+            `${grade}/${category}/${tier}: expected 1 quiz, got ${tierCount}`,
+          );
         }
       }
     }

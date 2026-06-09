@@ -1,4 +1,5 @@
 import { buildQuiz } from '../utils.js';
+import { GRADE_4_TIER_QUIZZES } from './grade_4_tier_quizzes.js';
 
 const G = 'grade_4';
 
@@ -88,4 +89,5 @@ export const GRADE_4_CATALOG = [
       { text: 'Map scale helps you find real ___', options: ['distance', 'taste', 'sound', 'smell'], correctIndex: 0, topic: 'Tools' },
     ],
   }),
+  ...GRADE_4_TIER_QUIZZES,
 ];

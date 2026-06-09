@@ -4,13 +4,45 @@ import {
   resolveQuizSubject,
 } from '../../shared/content/taxonomy.js';
 import { buildRecommendationReasoning } from '../ai/services/recommendationReasoning.service.js';
+import { buildAllCategoryAdaptiveProfiles } from './adaptiveScore.service.js';
 import {
   FROZEN_LEARNING_CATEGORIES,
   isAdaptiveGrade,
-  recommendationLabelToDifficulty,
   recommendedDifficultyForStatus,
   resolveCategoryStatus,
 } from './adaptiveRules.js';
+
+/**
+ * @param {{
+ *   adaptiveProfile?: { features?: Record<string, unknown> } | null,
+ *   features?: Record<string, unknown> | null,
+ *   emotionalSignal?: import('../emotion-feedback/services/emotionalSignal.service.js').EmotionalSignal | null,
+ * } | null} tierPrediction
+ */
+function extractEmotionalInput(tierPrediction) {
+  if (tierPrediction?.emotionalSignal) {
+    return tierPrediction.emotionalSignal;
+  }
+
+  const features =
+    tierPrediction?.adaptiveProfile?.features ?? tierPrediction?.features ?? null;
+  if (!features || typeof features !== 'object') return null;
+
+  if ('emotional_signal_source' in features) {
+    return {
+      score: features.emotional_score ?? null,
+      assessed: features.emotional_assessed === true,
+      source: features.emotional_signal_source ?? 'neutral_default',
+      label: features.quiz_emotion_label ?? null,
+    };
+  }
+
+  if (features.emotional_score !== null && features.emotional_score !== undefined) {
+    return Number(features.emotional_score);
+  }
+
+  return null;
+}
 
 /**
  * @param {import('@prisma/client').QuizAttempt} attempt
@@ -43,9 +75,13 @@ function attemptPercent(attempt) {
 export function buildLearningProfile(attempts, childGradeLevel, tierPrediction = null) {
   const adaptiveEnabled = isAdaptiveGrade(childGradeLevel);
   const completed = attempts.filter((row) => row.status === 'completed');
-  const globalDifficulty = tierPrediction
-    ? recommendationLabelToDifficulty(tierPrediction.recommendation)
-    : null;
+  const emotionalInput = extractEmotionalInput(tierPrediction);
+  const categoryAdaptiveByKey = new Map(
+    buildAllCategoryAdaptiveProfiles(attempts, emotionalInput).map((profile) => [
+      profile.category,
+      profile,
+    ]),
+  );
 
   /** @type {Map<string, { total: number, count: number }>} */
   const byCategory = new Map();
@@ -67,14 +103,25 @@ export function buildLearningProfile(attempts, childGradeLevel, tierPrediction =
         ? Math.round((stats.total / attemptCount) * 100) / 100
         : null;
     const status = resolveCategoryStatus(averagePercent, attemptCount);
+    const categoryAdaptive = categoryAdaptiveByKey.get(categoryId);
+    const recommendedDifficulty =
+      categoryAdaptive?.attemptCount > 0 && categoryAdaptive.recommendedDifficulty
+        ? categoryAdaptive.recommendedDifficulty
+        : recommendedDifficultyForStatus(status);
+
     return {
       category: categoryId,
       label: CATEGORY_LABELS[categoryId] ?? categoryId,
       averagePercent,
       attemptCount,
       status,
-      recommendedDifficulty:
-        globalDifficulty ?? recommendedDifficultyForStatus(status),
+      recommendedDifficulty,
+      categoryAdaptiveScore: categoryAdaptive?.adaptiveScore ?? null,
+      categoryCompletionRate: categoryAdaptive?.completionRate ?? 0,
+      categoryPerformanceTrend: categoryAdaptive?.performanceTrend ?? null,
+      categoryTrendDirection: categoryAdaptive?.trendDirection ?? 'insufficient_data',
+      categoryMasteryLevel: categoryAdaptive?.masteryLevel ?? null,
+      categoryRecommendation: categoryAdaptive?.recommendation ?? null,
     };
   });
 

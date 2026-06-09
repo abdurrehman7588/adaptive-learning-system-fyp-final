@@ -1,4 +1,5 @@
 import { buildQuiz } from '../utils.js';
+import { GRADE_5_TIER_QUIZZES } from './grade_5_tier_quizzes.js';
 
 const G = 'grade_5';
 
@@ -88,4 +89,5 @@ export const GRADE_5_CATALOG = [
       { text: 'Two fractions equal value: 1/2 and ___', options: ['2/4', '1/3', '3/2', '2/2'], correctIndex: 0, topic: 'Reason' },
     ],
   }),
+  ...GRADE_5_TIER_QUIZZES,
 ];

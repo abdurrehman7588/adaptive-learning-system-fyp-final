@@ -621,3 +621,99 @@ export function buildAdaptiveProfileFromAttempts(
   const features = buildAdaptiveFeatures(attempts, emotionalInput);
   return buildAdaptiveProfile(features, mlPrediction);
 }
+
+/**
+ * @param {import('@prisma/client').QuizAttempt[]} attempts
+ * @param {string} categoryId
+ */
+function filterAttemptsByCategory(attempts, categoryId) {
+  return attempts.filter((attempt) => {
+    const { category } = resolveQuizSubject(attempt.quiz ?? {});
+    const key = normalizeLearningCategory(category) ?? 'math';
+    return key === categoryId;
+  });
+}
+
+/**
+ * Per-category adaptive features (global emotional signal; category-scoped attempts).
+ *
+ * @param {import('@prisma/client').QuizAttempt[]} attempts
+ * @param {string} categoryId
+ * @param {import('../emotion-feedback/services/emotionalSignal.service.js').EmotionalSignal | number | null} [emotionalInput]
+ */
+export function buildCategoryAdaptiveFeatures(attempts, categoryId, emotionalInput = null) {
+  const categoryAttempts = filterAttemptsByCategory(attempts, categoryId);
+  const features = buildAdaptiveFeatures(categoryAttempts, emotionalInput);
+  const completed = categoryAttempts.filter((row) => row.status === 'completed');
+
+  return {
+    ...features,
+    category: categoryId,
+    attempt_count: completed.length,
+    total_attempts: categoryAttempts.length,
+    category_mastery_level:
+      completed.length > 0 ? Math.round(features.average_score * 100) / 100 : null,
+  };
+}
+
+/**
+ * @param {import('@prisma/client').QuizAttempt[]} attempts
+ * @param {string} categoryId
+ * @param {import('../emotion-feedback/services/emotionalSignal.service.js').EmotionalSignal | number | null} [emotionalInput]
+ */
+export function buildCategoryAdaptiveProfile(attempts, categoryId, emotionalInput = null) {
+  const categoryAttempts = filterAttemptsByCategory(attempts, categoryId);
+  const features = buildCategoryAdaptiveFeatures(attempts, categoryId, emotionalInput);
+  const completed = categoryAttempts.filter((row) => row.status === 'completed');
+  const hasData = completed.length > 0;
+
+  if (!hasData) {
+    return {
+      category: categoryId,
+      averageScore: null,
+      completionRate: 0,
+      attemptCount: 0,
+      totalAttempts: categoryAttempts.length,
+      performanceTrend: null,
+      trendDirection: /** @type {TrendDirection} */ ('insufficient_data'),
+      masteryLevel: null,
+      adaptiveScore: null,
+      recommendedDifficulty: null,
+      recommendation: null,
+      confidence: 0,
+      features,
+    };
+  }
+
+  const adaptiveScore = computeAdaptiveScore(features);
+  // Difficulty tier follows category average (see ADAPTIVE_DIFFICULTY_THRESHOLDS);
+  // adaptiveScore remains the richer multi-signal profile metric.
+  const recommendedDifficulty = resolveDifficultyFromAdaptiveScore(features.average_score);
+  const recommendation = difficultyToRecommendationLabel(recommendedDifficulty);
+
+  return {
+    category: categoryId,
+    averageScore: features.average_score,
+    completionRate: features.completion_rate,
+    attemptCount: completed.length,
+    totalAttempts: categoryAttempts.length,
+    performanceTrend: features.performance_trend,
+    trendDirection: features.trendDirection,
+    masteryLevel: features.category_mastery_level,
+    adaptiveScore,
+    recommendedDifficulty,
+    recommendation,
+    confidence: adaptiveConfidence(adaptiveScore, recommendation),
+    features,
+  };
+}
+
+/**
+ * @param {import('@prisma/client').QuizAttempt[]} attempts
+ * @param {import('../emotion-feedback/services/emotionalSignal.service.js').EmotionalSignal | number | null} [emotionalInput]
+ */
+export function buildAllCategoryAdaptiveProfiles(attempts, emotionalInput = null) {
+  return FROZEN_LEARNING_CATEGORIES.map((categoryId) =>
+    buildCategoryAdaptiveProfile(attempts, categoryId, emotionalInput),
+  );
+}

@@ -6,10 +6,11 @@
 export async function upsertCatalogQuiz(prisma, spec) {
   const existing = await prisma.quiz.findUnique({
     where: { slug: spec.slug },
-    include: {
+    select: {
+      id: true,
       questions: {
         orderBy: { orderIndex: 'asc' },
-        include: { options: { orderBy: { orderIndex: 'asc' } } },
+        select: { id: true, orderIndex: true },
       },
     },
   });
@@ -27,15 +28,38 @@ export async function upsertCatalogQuiz(prisma, spec) {
     subject: spec.subject ?? null,
   };
 
-  const quiz = existing
-    ? await prisma.quiz.update({
-        where: { id: existing.id },
-        data: quizData,
-      })
-    : await prisma.quiz.create({ data: quizData });
+  if (!existing) {
+    return prisma.quiz.create({
+      data: {
+        ...quizData,
+        questions: {
+          create: spec.questions.map((qSpec, qIndex) => ({
+            questionText: qSpec.text,
+            orderIndex: qIndex,
+            topic: qSpec.topic ?? null,
+            difficultyLevel: qSpec.difficultyLevel ?? null,
+            skillArea: qSpec.skillArea ?? null,
+            estimatedTimeSeconds: qSpec.estimatedTimeSeconds ?? 45,
+            options: {
+              create: qSpec.options.map((optionText, oIndex) => ({
+                optionText,
+                orderIndex: oIndex,
+                isCorrect: oIndex === qSpec.correctIndex,
+              })),
+            },
+          })),
+        },
+      },
+    });
+  }
+
+  const quiz = await prisma.quiz.update({
+    where: { id: existing.id },
+    data: quizData,
+  });
 
   const existingByOrder = new Map(
-    (existing?.questions ?? []).map((question) => [question.orderIndex, question]),
+    existing.questions.map((question) => [question.orderIndex, question]),
   );
   const specOrderIndexes = new Set(spec.questions.map((_, index) => index));
 
@@ -62,20 +86,17 @@ export async function upsertCatalogQuiz(prisma, spec) {
         });
 
     await prisma.quizQuestionOption.deleteMany({ where: { questionId: question.id } });
-
-    for (let oIndex = 0; oIndex < qSpec.options.length; oIndex += 1) {
-      await prisma.quizQuestionOption.create({
-        data: {
-          questionId: question.id,
-          optionText: qSpec.options[oIndex],
-          orderIndex: oIndex,
-          isCorrect: oIndex === qSpec.correctIndex,
-        },
-      });
-    }
+    await prisma.quizQuestionOption.createMany({
+      data: qSpec.options.map((optionText, oIndex) => ({
+        questionId: question.id,
+        optionText,
+        orderIndex: oIndex,
+        isCorrect: oIndex === qSpec.correctIndex,
+      })),
+    });
   }
 
-  const staleQuestions = (existing?.questions ?? []).filter(
+  const staleQuestions = existing.questions.filter(
     (question) => !specOrderIndexes.has(question.orderIndex),
   );
 

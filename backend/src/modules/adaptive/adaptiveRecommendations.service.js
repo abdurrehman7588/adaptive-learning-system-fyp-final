@@ -8,9 +8,8 @@ import {
 import {
   priorityForCategory,
   priorityForCategoryAdaptive,
-  recommendationLabelToDifficulty,
-  recommendedDifficultyForStatus,
   resolveAdaptiveAction,
+  resolveCategoryRecommendedDifficulty,
 } from './adaptiveRules.js';
 import {
   isTierPilotCell,
@@ -204,10 +203,6 @@ function buildTierRoutedRecommendations(
   const categories = listRecommendationCategories(quizzes, gradeLevel);
   const recommendations = [];
 
-  const globalDifficulty = tierPrediction
-    ? recommendationLabelToDifficulty(tierPrediction.recommendation)
-    : learningProfile.adaptiveProfile?.recommendedDifficulty ?? null;
-
   const adaptiveContext = tierPrediction?.adaptiveProfile
     ? {
         adaptiveScore: tierPrediction.adaptiveProfile.adaptiveScore,
@@ -228,8 +223,9 @@ function buildTierRoutedRecommendations(
   for (const categoryKey of categories) {
     const categoryRow = profileByCategory.get(categoryKey);
     const categoryStatus = categoryRow?.status ?? 'unattempted';
-    const recommendedDifficulty =
-      globalDifficulty ?? recommendedDifficultyForStatus(categoryStatus);
+    const recommendedDifficulty = resolveCategoryRecommendedDifficulty(
+      categoryRow ?? { status: categoryStatus },
+    );
     const { quiz, tierMatched, fallbackTier } = selectQuizForAdaptiveTier(
       quizzes,
       categoryKey,
@@ -301,10 +297,6 @@ export function buildAdaptiveRecommendations(
     learningProfile.categories.map((row) => [row.category, row]),
   );
 
-  const globalDifficulty = tierPrediction
-    ? recommendationLabelToDifficulty(tierPrediction.recommendation)
-    : learningProfile.adaptiveProfile?.recommendedDifficulty ?? null;
-
   const adaptiveContext = tierPrediction?.adaptiveProfile
     ? {
         adaptiveScore: tierPrediction.adaptiveProfile.adaptiveScore,
@@ -329,10 +321,9 @@ export function buildAdaptiveRecommendations(
     const categoryKey = normalizeLearningCategory(category ?? quiz.category) ?? 'math';
     const categoryRow = profileByCategory.get(categoryKey);
     const categoryStatus = categoryRow?.status ?? 'unattempted';
-    const recommendedDifficulty =
-      globalDifficulty ??
-      categoryRow?.recommendedDifficulty ??
-      recommendedDifficultyForStatus(categoryStatus);
+    const recommendedDifficulty = resolveCategoryRecommendedDifficulty(
+      categoryRow ?? { status: categoryStatus },
+    );
 
     recommendations.push(
       buildRecommendationRow({

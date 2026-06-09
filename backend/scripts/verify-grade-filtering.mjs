@@ -23,8 +23,10 @@ const GRADE_ORDER = [
   'grade_6',
 ];
 
+const QUIZZES_PER_GRADE = 18;
+
 const EXPECTED_COUNTS = Object.fromEntries(
-  GRADE_ORDER.map((grade) => [grade, isTierPilotGrade(grade) ? 18 : 6]),
+  GRADE_ORDER.map((grade) => [grade, QUIZZES_PER_GRADE]),
 );
 
 function request(method, path, { token, body } = {}) {
@@ -96,7 +98,7 @@ async function main() {
   const parentQuizzes = parentList.json?.data?.quizzes ?? [];
   checks.push([
     'Parent sees full published catalog',
-    parentList.status === 200 && parentQuizzes.length === 48,
+    parentList.status === 200 && parentQuizzes.length === 144,
   ]);
 
   const grade1Quiz = await prisma.quiz.findFirst({
@@ -167,14 +169,17 @@ async function main() {
       `${label}: recommendations only same grade`,
       recGrades.length === 1 && recGrades[0] === childGrade,
     ]);
-    const expectedRecCount = isTierPilotGrade(childGrade) ? 6 : quizzes.length;
+    const expectedRecCount = isTierPilotGrade(childGrade) ? 6 : quizzes.length; // all grades tier-pilot → 6 recs
     checks.push([
       `${label}: recommendations count (${expectedRecCount})`,
       recs.length === expectedRecCount,
     ]);
 
     if (isTierPilotGrade(childGrade)) {
-      if (grade1Quiz) {
+      if (
+        grade1Quiz &&
+        GRADE_ORDER.indexOf(childGrade) > GRADE_ORDER.indexOf('grade_1')
+      ) {
         const blockedLower = await request('GET', `/quizzes/${grade1Quiz.id}`, {
           token,
         });
@@ -183,7 +188,10 @@ async function main() {
           blockedLower.status === 403,
         ]);
       }
-      if (grade3Quiz) {
+      if (
+        grade3Quiz &&
+        GRADE_ORDER.indexOf(childGrade) < GRADE_ORDER.indexOf('grade_3')
+      ) {
         const blockedHigher = await request('GET', `/quizzes/${grade3Quiz.id}`, {
           token,
         });

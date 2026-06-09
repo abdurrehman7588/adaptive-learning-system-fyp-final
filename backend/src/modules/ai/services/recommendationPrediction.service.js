@@ -1,4 +1,7 @@
-import { buildAdaptiveFeatures } from '../../adaptive/adaptiveScore.service.js';
+import {
+  buildAdaptiveFeatures,
+  buildAllCategoryAdaptiveProfiles,
+} from '../../adaptive/adaptiveScore.service.js';
 import { resolveEmotionalSignal } from '../../emotion-feedback/services/emotionalSignal.service.js';
 import { buildStudentFeatures, mergeAdaptiveFeatures } from './studentFeatures.service.js';
 import { predictRecommendationLevel } from './mlPrediction.service.js';
@@ -30,9 +33,14 @@ export class RecommendationPredictionService {
     const adaptiveFeatures = buildAdaptiveFeatures(resolvedAttempts, emotionalSignal);
     const features = mergeAdaptiveFeatures(mlFeatures, adaptiveFeatures);
     const prediction = await predictRecommendationLevel(features, childId, adaptiveFeatures);
+    const categoryAdaptiveProfiles = buildAllCategoryAdaptiveProfiles(
+      resolvedAttempts,
+      emotionalSignal,
+    );
     return {
       ...prediction,
       emotionalSignal,
+      categoryAdaptiveProfiles,
     };
   }
 

@@ -1,4 +1,5 @@
 import { buildQuiz } from '../utils.js';
+import { GRADE_3_TIER_QUIZZES } from './grade_3_tier_quizzes.js';
 
 const G = 'grade_3';
 
@@ -88,4 +89,5 @@ export const GRADE_3_CATALOG = [
       { text: 'Graph with labeled axes is ___ than doodle', options: ['clearer', 'less useful', 'always wrong', 'illegal'], correctIndex: 0, topic: 'Data' },
     ],
   }),
+  ...GRADE_3_TIER_QUIZZES,
 ];

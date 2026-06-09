@@ -89,13 +89,10 @@ async function main() {
     },
   });
 
-  const tierPilotExtras =
-    TIER_PILOT_GRADE_LEVELS.length *
-    FROZEN_CATEGORIES.length *
-    (GRADE_2_QUIZZES_PER_CATEGORY - 1);
-  const expectedTotal = ALL_GRADE_LEVELS.length * FROZEN_CATEGORIES.length + tierPilotExtras;
+  const expectedTotal =
+    ALL_GRADE_LEVELS.length * FROZEN_CATEGORIES.length * GRADE_2_QUIZZES_PER_CATEGORY;
   checks.push([
-    `Published quiz count is ${expectedTotal} (72 with K + G2 tier pilots)`,
+    `Published quiz count is ${expectedTotal} (full tier ladder per grade)`,
     published.length === expectedTotal,
   ]);
 
@@ -147,8 +144,7 @@ async function main() {
       listRes.status === 200 &&
         grades.length === 1 &&
         grades[0] === grade &&
-        quizzes.length ===
-          (isTierPilotGrade(grade) ? 18 : EXPECTED_PER_GRADE),
+        quizzes.length === FROZEN_CATEGORIES.length * GRADE_2_QUIZZES_PER_CATEGORY,
     ]);
   }
 

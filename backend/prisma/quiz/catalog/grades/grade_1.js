@@ -1,4 +1,5 @@
 import { buildQuiz } from '../utils.js';
+import { GRADE_1_TIER_QUIZZES } from './grade_1_tier_quizzes.js';
 
 const G = 'grade_1';
 
@@ -88,4 +89,5 @@ export const GRADE_1_CATALOG = [
       { text: 'Odd one out: red, blue, apple, green', options: ['Apple', 'Red', 'Blue', 'Green'], correctIndex: 0, topic: 'Sort' },
     ],
   }),
+  ...GRADE_1_TIER_QUIZZES,
 ];

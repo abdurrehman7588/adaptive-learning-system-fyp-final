@@ -2,6 +2,7 @@ import {
   adaptiveScoreRecommendationLevel,
   resolveAdaptiveActionFromProfile,
   priorityFromAdaptiveScore,
+  resolveDifficultyFromAdaptiveScore,
 } from './adaptiveScore.service.js';
 
 /** @typedef {import('@prisma/client').GradeLevel} GradeLevel */
@@ -66,6 +67,42 @@ export function recommendedDifficultyForStatus(status) {
   if (status === 'needs_practice') return 'easy';
   if (status === 'mastery') return 'hard';
   return 'medium';
+}
+
+/**
+ * Map a category average percent to easy / medium / hard (status-band fallback).
+ *
+ * @param {number | null} averagePercent
+ */
+export function resolveDifficultyFromCategoryAverage(averagePercent) {
+  if (averagePercent === null || averagePercent === undefined) {
+    return 'medium';
+  }
+  return resolveDifficultyFromAdaptiveScore(averagePercent);
+}
+
+/**
+ * Quiz routing difficulty: category profile first, never the global ML tier.
+ *
+ * @param {{
+ *   recommendedDifficulty?: import('@prisma/client').DifficultyLevel | null,
+ *   status?: CategoryStatus,
+ *   averagePercent?: number | null,
+ *   attemptCount?: number,
+ * }} categoryRow
+ * @returns {import('@prisma/client').DifficultyLevel}
+ */
+export function resolveCategoryRecommendedDifficulty(categoryRow) {
+  if (categoryRow?.recommendedDifficulty) {
+    return categoryRow.recommendedDifficulty;
+  }
+
+  const attemptCount = categoryRow?.attemptCount ?? 0;
+  if (attemptCount > 0 && categoryRow?.averagePercent !== null && categoryRow?.averagePercent !== undefined) {
+    return resolveDifficultyFromCategoryAverage(categoryRow.averagePercent);
+  }
+
+  return recommendedDifficultyForStatus(categoryRow?.status ?? 'unattempted');
 }
 
 /**
