@@ -64,7 +64,7 @@ export const Layout = () => {
             />
 
             <main className="flex-1 flex flex-col relative min-w-0 overflow-hidden bg-slate-50/50">
-                <header className="md:hidden h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-3 sm:px-4 sticky top-0 z-10 shrink-0">
+                <header className="md:hidden h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-3 sm:px-4 sticky top-0 z-10 shrink-0 pt-safe">
                     <h1 className="font-bold text-base sm:text-lg bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600 truncate pr-2">
                         KidsLearn
                     </h1>

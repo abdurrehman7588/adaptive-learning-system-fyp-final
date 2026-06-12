@@ -1,73 +1,103 @@
-# React + TypeScript + Vite
+# Adaptive Learning System for Kids — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React single-page application for the Adaptive Learning System. Parents manage children, view analytics and emotional insights, and monitor AI recommendations. Students take grade-scoped quizzes, complete emotional intelligence activities, and track XP, badges, and streaks.
 
-Currently, two official plugins are available:
+## Tech stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 19** with TypeScript
+- **Vite 7** — dev server and production build
+- **Tailwind CSS** — styling and responsive layouts
+- **React Router 7** — client-side routing
+- **Axios** — API client with JWT bearer auth
+- **Recharts** — parent reports and analytics charts
+- **Framer Motion** — UI animations
+- **Lucide React** — icons
 
-## React Compiler
+## Pages and routes
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Route | Page | Description |
+|-------|------|-------------|
+| `/` | LandingPage | Public landing and role selection |
+| `/parent/login` | ParentAuth | Parent email/password and Google OAuth login |
+| `/student/login` | StudentAuth | Student username + PIN login |
+| `/parent/dashboard` | ParentDashboard | Multi-child overview, AI cards, suggested next activity |
+| `/parent/reports` | ParentReports | Performance charts, quiz history, child comparison |
+| `/parent/insights` | EmotionalInsights | Parent view of child emotional intelligence |
+| `/parent/settings` | ParentSettings | Profile and preferences |
+| `/parent/settings/children` | ParentManageChildren | Add, edit, and manage child profiles |
+| `/parent/onboarding/*` | Onboarding pages | Profile, child setup, and completion flow |
+| `/student/dashboard` | StudentDashboard | AI recommendations, stats, recent activity |
+| `/student/quizzes` | QuizList | Grade-filtered quiz catalog by category |
+| `/student/quiz/:quizId` | QuizPlayer | Timed quiz with multiple-choice questions |
+| `/student/quiz/result` | QuizResultPage | Score review and optional emotion feedback |
+| `/student/rewards` | StudentRewards | XP, level, badges, and streaks |
+| `/student/profile` | StudentProfile | Learner profile and grade info |
+| `/student/emotional` | EmotionalProfile | EI dimension overview |
+| `/student/emotional/assessment` | EmotionalAssessment | SDQ-style EI assessment |
+| `/student/emotional/activity/:slug` | EmotionalActivity | Guided EI activity |
+| `/student/emotional/:categorySlug` | EmotionalCategoryDetail | Category-specific EI content |
 
-## Expanding the ESLint configuration
+## Key features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Role-based layouts (parent sidebar, student bottom navigation)
+- Mobile-responsive UI with safe-area support for phones
+- AI recommendation cards (`AiRecommendationCard`, `AiRecommendedLevelBadge`)
+- Adaptive quiz catalog with category and difficulty badges
+- Parent onboarding flow with `ParentFlowGuard`
+- JWT session persistence via `AuthContext`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Local development
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Prerequisites
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Node.js 20+
+- Backend API running on port 5000 (see [backend README](../backend/README.md))
+
+### Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open `http://localhost:5173`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+In development, the Vite dev server proxies `/api` to `http://127.0.0.1:5000` — no frontend env file is required for local work.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Optional environment variable
+
+Create `frontend/.env` only when the API is not on the default proxy target:
+
+```
+VITE_API_BASE_URL=http://localhost:5000/api
+```
+
+In production (Vercel), set `VITE_API_BASE_URL` to your deployed backend URL including `/api`.
+
+## Build and preview
+
+```bash
+npm run build    # tsc -b && vite build → dist/
+npm run preview  # serve production build locally
+npm run lint     # ESLint
+```
+
+## Deployment (Vercel)
+
+1. Set root directory to `frontend`
+2. Build command: `npm run build`
+3. Output directory: `dist`
+4. Add environment variable: `VITE_API_BASE_URL` → your Render API base (e.g. `https://adaptive-learning-api.onrender.com/api`)
+5. `vercel.json` configures SPA rewrites so client-side routes work on refresh
+
+## Project layout
+
+```
+src/
+  api/           # Axios client and API modules
+  components/    # UI, layout, features (AI, reports, emotional)
+  context/       # Auth, theme, parent flow
+  pages/         # Route-level pages (auth, parent, student, landing)
+  lib/           # Utilities (JWT, responsive, AI helpers)
 ```

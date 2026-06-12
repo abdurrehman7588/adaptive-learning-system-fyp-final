@@ -19,7 +19,7 @@ export function OnboardingShell({
     const progress = Math.round((step / totalSteps) * 100);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50 px-4 py-10">
+        <div className="min-h-[100dvh] bg-gradient-to-br from-teal-50 via-white to-cyan-50 px-4 sm:px-6 py-8 sm:py-10 overflow-x-hidden">
             <div className="mx-auto max-w-lg">
                 <div className="mb-8">
                     <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">

@@ -18,7 +18,7 @@ export const LandingPage = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-yellow-300 via-orange-200 to-pink-300 relative font-sans flex flex-col overflow-hidden">
+        <div className="min-h-[100dvh] bg-gradient-to-br from-yellow-300 via-orange-200 to-pink-300 relative font-sans flex flex-col overflow-x-hidden overflow-y-auto">
             {/* Animated Background Animals */}
             {animals.map((animal, index) => (
                 <motion.div
@@ -36,7 +36,7 @@ export const LandingPage = () => {
                         delay: animal.delay,
                         ease: "easeInOut"
                     }}
-                    className="absolute text-6xl pointer-events-none filter drop-shadow-md opacity-40 md:opacity-60"
+                    className="absolute text-4xl sm:text-6xl pointer-events-none filter drop-shadow-md opacity-30 sm:opacity-40 md:opacity-60"
                     style={{ left: `${animal.x}%`, top: `${animal.y}%` }}
                 >
                     {animal.icon}
@@ -55,10 +55,10 @@ export const LandingPage = () => {
                 className="absolute top-32 right-10 text-white opacity-30 text-8xl md:text-9xl pointer-events-none"
             >☁️</motion.div>
 
-            <div className="container mx-auto px-4 py-8 md:py-12 flex flex-col justify-center min-h-screen z-10 relative">
+            <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 md:py-12 flex flex-col justify-center min-h-[100dvh] z-10 relative w-full min-w-0">
                 {/* Header */}
                 <motion.header
-                    className="text-center mb-16 shrink-0 pt-8 md:pt-0"
+                    className="text-center mb-10 sm:mb-16 shrink-0 pt-6 sm:pt-8 md:pt-0"
                     initial={{ opacity: 0, y: -50 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8 }}

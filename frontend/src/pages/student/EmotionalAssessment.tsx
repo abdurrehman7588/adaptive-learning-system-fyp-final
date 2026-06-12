@@ -318,8 +318,8 @@ export const EmotionalAssessmentPage = () => {
                                                                 : 'border-slate-100 bg-white'
                                                         }`}
                                                     >
-                                                        <div className="flex items-center justify-between gap-2 mb-3">
-                                                            <p className="font-medium text-slate-800">
+                                                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                                                            <p className="font-medium text-slate-800 break-words min-w-0">
                                                                 {q.questionIndex + 1}. {q.text}
                                                             </p>
                                                             {answers[key] != null && (
@@ -340,7 +340,7 @@ export const EmotionalAssessmentPage = () => {
                                                                             opt.value,
                                                                         )
                                                                     }
-                                                                    className={`text-sm font-bold py-2.5 px-2 rounded-xl border transition-colors ${
+                                                                    className={`text-xs sm:text-sm font-bold py-3 px-2 rounded-xl border transition-colors min-h-11 ${
                                                                         answers[key] === opt.value
                                                                             ? `${meta.accentClass} text-white`
                                                                             : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'

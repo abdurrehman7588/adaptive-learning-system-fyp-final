@@ -33,6 +33,12 @@ export type CategoryInsight = {
 export type LearningCategoryStat = CategoryInsight & {
     attemptCount: number;
     recommendedDifficulty: string;
+    categoryAdaptiveScore?: number | null;
+    categoryCompletionRate?: number;
+    categoryPerformanceTrend?: number | null;
+    categoryTrendDirection?: 'improving' | 'stable' | 'declining' | 'insufficient_data';
+    categoryMasteryLevel?: number | null;
+    categoryRecommendation?: 'Easy' | 'Medium' | 'Hard' | null;
 };
 
 export type EmotionalSignalSource = 'quiz_feedback' | 'sdq_assessment' | 'neutral_default';

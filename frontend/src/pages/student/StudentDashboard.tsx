@@ -324,8 +324,8 @@ function RecentActivityRow({ attempt }: { attempt: RecentAttempt }) {
     return (
         <li className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3 sm:px-4 py-2.5">
             <div className="min-w-0">
-                <p className="font-bold text-slate-800 truncate text-sm">{attempt.quizTitle}</p>
-                <p className="text-xs text-slate-500 truncate">
+                <p className="font-bold text-slate-800 text-sm break-words line-clamp-2">{attempt.quizTitle}</p>
+                <p className="text-xs text-slate-500 break-words">
                     {attempt.subjectLabel} · {formatRelativeTime(attempt.completedAt)}
                 </p>
             </div>

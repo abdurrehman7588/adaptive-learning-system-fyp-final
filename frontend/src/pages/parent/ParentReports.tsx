@@ -19,6 +19,8 @@ import {
 } from '../../lib/activeChild';
 import { downloadReportsCsv } from '../../lib/exportReport';
 import { getToken } from '../../lib/tokenStorage';
+import { pageShellWide } from '../../lib/responsive';
+import { cn } from '../../lib/utils';
 
 export const ParentReports = () => {
     const [overview, setOverview] = useState<ParentAnalyticsOverview | null>(null);
@@ -115,7 +117,7 @@ export const ParentReports = () => {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 sm:p-6 lg:p-10 space-y-8 max-w-7xl mx-auto"
+            className={cn(pageShellWide, 'space-y-6 sm:space-y-8 w-full min-w-0')}
         >
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
@@ -153,7 +155,7 @@ export const ParentReports = () => {
                         type="button"
                         onClick={handleExport}
                         disabled={!reports || isLoading || isExporting}
-                        className="flex items-center gap-2 bg-teal-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-teal-700 transition-colors shadow-lg shadow-teal-500/25 disabled:opacity-50 disabled:cursor-not-allowed mt-auto"
+                        className="flex items-center justify-center gap-2 bg-teal-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-teal-700 transition-colors shadow-lg shadow-teal-500/25 disabled:opacity-50 disabled:cursor-not-allowed mt-auto min-h-11 w-full sm:w-auto"
                     >
                         {isExporting ? (
                             <Loader2 className="w-4 h-4 animate-spin" />

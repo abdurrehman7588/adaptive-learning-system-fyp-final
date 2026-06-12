@@ -11,7 +11,7 @@ export function ReportsPerformanceOverview({
     isLoading,
 }: ReportsPerformanceOverviewProps) {
     return (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <OverviewCard
                 title="Quizzes completed"
                 value={isLoading ? '—' : String(overview.completedQuizzes)}
@@ -83,7 +83,7 @@ function OverviewCard({
     };
 
     return (
-        <div className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3 min-h-[7rem]">
+        <div className="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3 min-h-[7rem] min-w-0">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
                 <Icon className="w-5 h-5" />
             </div>
@@ -91,10 +91,10 @@ function OverviewCard({
                 <p className="text-[10px] md:text-xs font-semibold uppercase tracking-wider text-slate-500">
                     {title}
                 </p>
-                <p className="text-lg md:text-xl font-bold text-slate-900 mt-0.5 leading-tight truncate">
+                <p className="text-lg md:text-xl font-bold text-slate-900 mt-0.5 leading-tight break-words">
                     {value}
                 </p>
-                {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+                {sub && <p className="text-xs text-slate-500 mt-1 break-words">{sub}</p>}
             </div>
         </div>
     );

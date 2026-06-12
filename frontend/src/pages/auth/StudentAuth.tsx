@@ -70,12 +70,12 @@ export const StudentAuth = () => {
             <motion.div
                 animate={{ x: [0, 100, 0] }}
                 transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="absolute top-10 left-10 text-white opacity-40 text-8xl"
+                className="absolute top-10 left-4 sm:left-10 text-white opacity-40 text-5xl sm:text-8xl pointer-events-none"
             >☁️</motion.div>
             <motion.div
                 animate={{ x: [0, -100, 0] }}
                 transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                className="absolute top-32 right-10 text-white opacity-30 text-9xl"
+                className="absolute top-32 right-4 sm:right-10 text-white opacity-30 text-6xl sm:text-9xl pointer-events-none hidden sm:block"
             >☁️</motion.div>
 
             <motion.div
@@ -90,7 +90,7 @@ export const StudentAuth = () => {
                         <motion.div
                             animate={{ rotate: [0, 10, -10, 0] }}
                             transition={{ duration: 2, repeat: Infinity }}
-                            className="text-7xl mb-4 inline-block filter drop-shadow-lg"
+                            className="text-5xl sm:text-7xl mb-4 inline-block filter drop-shadow-lg"
                         >
                             🚀
                         </motion.div>

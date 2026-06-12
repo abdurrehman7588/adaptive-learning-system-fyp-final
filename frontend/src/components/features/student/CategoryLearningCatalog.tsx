@@ -56,7 +56,7 @@ export function CategoryLearningCatalog({ entries, gradeLabel }: CategoryLearnin
                                 </div>
                             )}
 
-                            <div className="flex items-start gap-2 mb-3 pr-20 sm:pr-24">
+                            <div className="flex items-start gap-2 mb-3 pr-16 sm:pr-24 min-w-0">
                                 <div
                                     className={cn(
                                         'w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-inner shrink-0',
@@ -76,7 +76,7 @@ export function CategoryLearningCatalog({ entries, gradeLabel }: CategoryLearnin
 
                             {quiz ? (
                                 <>
-                                    <p className="text-xs font-bold text-slate-500 mb-3 truncate">
+                                    <p className="text-xs font-bold text-slate-500 mb-3 line-clamp-2 break-words">
                                         {quiz.title}
                                         {questionCount > 0
                                             ? ` · ${questionCount} questions`

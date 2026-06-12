@@ -269,7 +269,7 @@ export const ParentDashboard = () => {
                     <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-cyan-600 tracking-tight break-words">
                         Welcome back, {user?.name?.split(' ')[0] || 'Parent'}!
                     </h1>
-                    <p className="text-slate-500 mt-2 text-lg">
+                    <p className="text-slate-500 mt-2 text-sm sm:text-base md:text-lg">
                         Track quiz performance and learning progress from completed attempts.
                     </p>
                 </div>
@@ -323,7 +323,7 @@ export const ParentDashboard = () => {
 
             {selectedChild && !isLoading && (
                 <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 relative z-10">
+                    <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4 sm:gap-6 relative z-10">
                         <StatsCard
                             title="Quizzes Completed"
                             value={String(completedCount)}
@@ -634,8 +634,8 @@ const StatsCard = ({
         <motion.div
             whileHover={{ y: compact ? -2 : -4 }}
             className={cn(
-                'bg-white rounded-2xl shadow-sm border border-slate-100',
-                compact ? 'p-4' : 'p-6',
+                'bg-white rounded-2xl shadow-sm border border-slate-100 min-w-0',
+                compact ? 'p-4' : 'p-5 sm:p-6',
             )}
         >
             <div className={cn('mb-3', compact && 'mb-2')}>
@@ -668,7 +668,7 @@ const StatsCard = ({
                 </div>
                 <p
                     className={cn(
-                        'font-medium',
+                        'font-medium break-words',
                         compact ? 'text-xs mt-1.5' : 'text-sm mt-2',
                         trendColor,
                     )}
@@ -726,7 +726,7 @@ const ActivityItem = ({ attempt }: { attempt: RecentAttempt }) => (
             <BookOpen className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-            <h4 className="text-slate-800 font-semibold text-sm truncate">{attempt.quizTitle}</h4>
+            <h4 className="text-slate-800 font-semibold text-sm break-words line-clamp-2">{attempt.quizTitle}</h4>
             <p className="text-slate-400 text-xs mt-0.5">
                 {attempt.subjectLabel} · {formatRelativeTime(attempt.completedAt)}
             </p>

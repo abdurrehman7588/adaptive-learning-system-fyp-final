@@ -89,7 +89,7 @@ export function PostQuizEmotionFeedbackModal({
                                             How did you feel while solving this quiz?
                                         </h2>
                                         {quizTitle && (
-                                            <p className="text-sm text-slate-500 mt-1 truncate">{quizTitle}</p>
+                                            <p className="text-sm text-slate-500 mt-1 break-words line-clamp-2">{quizTitle}</p>
                                         )}
                                     </div>
                                 </div>

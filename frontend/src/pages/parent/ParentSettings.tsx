@@ -26,6 +26,8 @@ import { resolveActiveChildId } from '../../lib/activeChild';
 import { loadParentPreferences, saveParentPreferences } from '../../lib/parentPreferences';
 import { fetchParentProfile, updateParentPreferences, getParentApiErrorMessage } from '../../api/parent';
 import { getToken } from '../../lib/tokenStorage';
+import { mobileTabButton, mobileTabStrip, pageShell } from '../../lib/responsive';
+import { cn } from '../../lib/utils';
 
 export const ParentSettings = () => {
     const { user, patchUser } = useAuth();
@@ -137,32 +139,36 @@ export const ParentSettings = () => {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full min-w-0 px-4 py-5 sm:px-6 sm:py-8 lg:px-10 lg:py-10 space-y-6 sm:space-y-8 max-w-5xl mx-auto"
+            className={cn(pageShell, 'space-y-6 sm:space-y-8 max-w-5xl')}
         >
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Account Settings</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 break-words">Account Settings</h1>
                     <p className="text-slate-500 mt-2">Manage your profile, preferences, and billing.</p>
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row gap-8">
-                <div className="w-full md:w-64 flex-shrink-0 space-y-2">
+            <div className="flex flex-col md:flex-row gap-6 md:gap-8 min-w-0">
+                <div className={cn(mobileTabStrip, 'md:flex-col md:overflow-visible md:space-y-2 md:w-64 md:flex-shrink-0 md:pb-0 md:mx-0 md:px-0')}>
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
                         return (
                             <button
                                 key={tab.id}
+                                type="button"
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                    ? 'bg-teal-50 text-teal-600 font-bold shadow-sm'
-                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                                    }`}
+                                className={cn(
+                                    mobileTabButton,
+                                    'md:w-full md:flex md:items-center md:gap-3 md:px-4 md:py-3 md:rounded-xl md:snap-none',
+                                    isActive
+                                        ? 'bg-teal-50 text-teal-600 font-bold shadow-sm'
+                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 bg-white border border-slate-100 md:border-0',
+                                )}
                             >
-                                <Icon className="w-5 h-5" />
-                                <span>{tab.label}</span>
-                                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-teal-600" />}
+                                <Icon className="w-5 h-5 shrink-0" />
+                                <span className="whitespace-nowrap">{tab.label}</span>
+                                {isActive && <div className="hidden md:block ml-auto w-1.5 h-1.5 rounded-full bg-teal-600" />}
                             </button>
                         );
                     })}
@@ -178,8 +184,8 @@ export const ParentSettings = () => {
                     >
                         {activeTab === 'profile' && (
                             <div className="space-y-6">
-                                <Card className="p-8">
-                                    <div className="flex items-center gap-6 mb-8">
+                                <Card className="p-5 sm:p-8">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
                                         <div className="relative">
                                             <div className="w-24 h-24 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 text-3xl font-bold border-4 border-white shadow-lg">
                                                 {profileName?.[0] || user?.name?.[0] || 'P'}

@@ -17,3 +17,14 @@ export const pageHeading =
 export const pageSubheading = 'text-base sm:text-lg font-bold text-slate-600';
 
 export const touchTarget = 'min-h-11 min-w-[2.75rem]';
+
+/** Horizontal scroll tab strip on narrow screens */
+export const mobileTabStrip =
+    'flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none';
+
+export const mobileTabButton =
+    'shrink-0 snap-start min-h-11 px-4 py-2.5 rounded-xl text-sm font-semibold';
+
+/** Section card used on reports / settings */
+export const sectionCard =
+    'rounded-2xl border border-slate-100 bg-white p-4 sm:p-5 md:p-6 shadow-sm w-full min-w-0';

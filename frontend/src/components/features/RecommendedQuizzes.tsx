@@ -198,8 +198,8 @@ export const RecommendedQuizzes = ({
                                 <Icon className="w-6 h-6" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <h4 className="font-bold text-slate-800 truncate">
+                                <div className="flex flex-wrap items-start gap-2 mb-1">
+                                    <h4 className="font-bold text-slate-800 break-words min-w-0 flex-1">
                                         {item.title}
                                     </h4>
                                     <span
@@ -258,7 +258,7 @@ export const RecommendedQuizzes = ({
                                     <Link
                                         to={`/student/quiz/${item.quizId}`}
                                         className={cn(
-                                            'inline-flex items-center gap-1 mt-3 text-sm font-semibold',
+                                            'inline-flex items-center gap-1 mt-3 text-sm font-semibold min-h-11 py-2',
                                             isParent
                                                 ? 'text-teal-600 hover:text-teal-700'
                                                 : 'text-orange-600 hover:text-orange-700',

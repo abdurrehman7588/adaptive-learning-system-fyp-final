@@ -77,8 +77,8 @@ export const StudentEmotionalSummary = () => {
 
             {!loading && !error && profile?.hasAssessment && profile.categories && (
                 <Card className="p-5 md:p-6 rounded-3xl border-2 border-rose-100 bg-white">
-                    <div className="flex items-end justify-between gap-3">
-                        <div>
+                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                        <div className="min-w-0">
                             <p className="text-xs font-bold uppercase text-rose-600">Overall EI</p>
                             <p className="text-3xl font-black text-slate-800">
                                 {Math.round(profile.overallScore ?? 0)}%
@@ -88,9 +88,9 @@ export const StudentEmotionalSummary = () => {
                             </p>
                         </div>
                         {profile.recommendedActivity && (
-                            <div className="text-right max-w-[55%]">
+                            <div className="sm:text-right min-w-0 w-full sm:max-w-[55%]">
                                 <p className="text-xs font-bold text-teal-700">Try next</p>
-                                <p className="text-sm font-bold text-slate-800 truncate">
+                                <p className="text-sm font-bold text-slate-800 break-words">
                                     {profile.recommendedActivity.title}
                                 </p>
                             </div>

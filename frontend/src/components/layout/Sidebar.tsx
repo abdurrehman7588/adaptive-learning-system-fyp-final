@@ -75,8 +75,10 @@ export const Sidebar = ({ navItems, isOpen = false, onClose }: SidebarProps) => 
             >
                 {/* Close Button Mobile */}
                 <button
+                    type="button"
                     onClick={onClose}
-                    className="md:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600"
+                    className="md:hidden absolute top-3 right-3 min-h-11 min-w-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-white/80"
+                    aria-label="Close menu"
                 >
                     <ChevronLeft className="w-6 h-6" />
                 </button>

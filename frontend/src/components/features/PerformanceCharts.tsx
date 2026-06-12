@@ -70,12 +70,12 @@ export const PerformanceCharts = ({
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 p-4 sm:p-6 w-full min-w-0">
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider">
                         Weekly Progress
                     </h3>
                     <span
-                        className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        className={`text-xs font-medium px-2 py-1 rounded-full self-start shrink-0 ${
                             weekTrend >= 0
                                 ? 'text-emerald-600 bg-emerald-50'
                                 : 'text-amber-600 bg-amber-50'
@@ -84,16 +84,17 @@ export const PerformanceCharts = ({
                         {trendLabel}
                     </span>
                 </div>
-                <div className="h-[220px] sm:h-[250px] w-full min-w-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={weeklyData}>
+                <div className="h-[200px] sm:h-[250px] w-full min-w-0">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                        <LineChart data={weeklyData} margin={{ left: -8, right: 4, top: 4, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis
                                 dataKey="name"
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fill: '#94a3b8', fontSize: 12 }}
-                                dy={10}
+                                tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                dy={8}
+                                interval="preserveStartEnd"
                             />
                             <YAxis
                                 domain={[0, 100]}
@@ -124,8 +125,8 @@ export const PerformanceCharts = ({
             </div>
 
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-500 uppercase tracking-wider">
                         Subject Mastery
                     </h3>
                     {strongestSubject && (
@@ -134,10 +135,10 @@ export const PerformanceCharts = ({
                         </span>
                     )}
                 </div>
-                <div className="h-[220px] sm:h-[250px] w-full min-w-0">
+                <div className="h-[200px] sm:h-[250px] w-full min-w-0">
                     {subjectData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={subjectData}>
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                            <BarChart data={subjectData} margin={{ left: -8, right: 4, top: 4, bottom: 0 }}>
                                 <CartesianGrid
                                     strokeDasharray="3 3"
                                     vertical={false}
@@ -147,8 +148,12 @@ export const PerformanceCharts = ({
                                     dataKey="name"
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: '#94a3b8', fontSize: 12 }}
-                                    dy={10}
+                                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                                    dy={8}
+                                    interval={0}
+                                    angle={subjectData.length > 3 ? -25 : 0}
+                                    textAnchor={subjectData.length > 3 ? 'end' : 'middle'}
+                                    height={subjectData.length > 3 ? 48 : 30}
                                 />
                                 <YAxis
                                     domain={[0, 100]}

@@ -9,6 +9,7 @@ import {
 } from '../../api/emotional';
 import { resolveActiveChildId } from '../../lib/activeChild';
 import { getToken } from '../../lib/tokenStorage';
+import { pageShell } from '../../lib/responsive';
 
 export const EmotionalInsights = () => {
     const [loading, setLoading] = useState(true);
@@ -46,7 +47,7 @@ export const EmotionalInsights = () => {
     }, [loadInsights]);
 
     return (
-        <div className="w-full min-w-0 space-y-6 px-4 py-5 sm:px-6 sm:py-8 lg:px-10 lg:py-10 max-w-4xl mx-auto">
+        <div className={`${pageShell} max-w-4xl space-y-6`}>
             <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Heart className="w-7 h-7 text-rose-500" />
                 Emotional Intelligence Insights
